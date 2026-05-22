@@ -63,8 +63,6 @@ DATE_SPREAD_DAYS = random.randint(1, 730)   # how wide is the date range?
 
 # Categorical pools — sizes vary per run
 ALL_PROJECTS      = ["AQUA", "SKYLINE", "GREEN", "TERRA", "NOVA", "APEX", "ZENITH"]
-ALL_PAYMENT_MODES = ["UPI", "Bank Transfer", "Cheque", "Cash", "NEFT",
-                     "RTGS", "Crypto", "Barter", None]
 
 # Slice these pools randomly — so some runs have 2 owners, some have 9
 projects      = random.sample(ALL_PROJECTS, random.randint(1, len(ALL_PROJECTS)))
