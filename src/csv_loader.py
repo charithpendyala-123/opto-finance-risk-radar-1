@@ -17,31 +17,39 @@ EXPECTED_COLUMNS = [
 ]
 
 def load_finance_csv(path="data/sample_finance_data.csv"):
-
-    df = pd.read_csv(path, dtype=object, keep_default_na=True)
-
     print("\nCSV CHECKPOINT")
     print("Source:", path)
-    
 
-    # Empty file check
+    try: ##included this because if the file is empty, pandas will throw an error instead of returning an empty dataframe, so this allows us to catch that and provide a more user-friendly message.
+        df = pd.read_csv(path, dtype=object, keep_default_na=True)
+    except pd.errors.EmptyDataError:
+        print("\nDATA REJECTED - blank sheet submitted.")
+        print("The file has no transaction records (empty file).")
+        return None
 
+    # Empty file check (for files that have headers but 0 rows)
     if len(df) == 0:
         print("\nDATA REJECTED - blank sheet submitted.")
         print("The file has no transaction records.")
         return None
 
-    # Missing columns check
+        # ── Missing or 100% Empty Columns Check ──
+    absent = []
 
-    absent = [c for c in EXPECTED_COLUMNS if c not in df.columns]
+    for col in EXPECTED_COLUMNS:
+        # Check 1: Is the column physically missing from the headers?
+        if col not in df.columns:
+            absent.append(col)
+        else:
+            # Check 2: Does it exist but contains 100% blank/null/whitespace values?
+            if df[col].fillna("").astype(str).str.strip().eq("").all():
+                absent.append(col)
 
     if absent:
-        print("\nDATA REJECTED - required columns missing:")
-
+        print("\nDATA REJECTED - required columns missing or 100% blank:")
         for c in absent:
-            print(c)
-
-        print("\nPlease re-submit with all required columns present.")
+            print(f"- {c}")
+        print("\nPlease re-submit with all required columns populated.")
         return None
 
     # Summary

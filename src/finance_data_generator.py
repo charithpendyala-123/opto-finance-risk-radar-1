@@ -10,20 +10,24 @@ from datetime import datetime, timedelta
 # ─────────────────────────────────────────────
 
 # How many records? Anywhere from 200 to 2000.
-NUM_RECORDS = random.randint(200, 2000)
+NUM_RECORDS = random.randint(0,2400)
 
 # Missing-field rates: each run picks its own
 # probability (0–100%) independently per field.
 MISSING_RATE = {
-    "transaction_id":   random.random(),        # could be 0% or 95%
-    "customer_id":      random.random(),
-    "unit_id":          random.random(),
-    "payment_mode":     random.random(),
-    "project_id":       random.random(),
-    "demand_date":      random.random() * 0.4,  # cap at 40% so dates aren't all gone
-    "payment_date":     random.random() * 0.4,
+    "transaction_id":     random.random(),        # could be 0% or 100%
+    "customer_id":        random.random(),
+    "unit_id":            random.random(),
+    "project_id":         random.random(),
+    "demand_date":        random.random(),
+    "payment_date":       random.random(),
+    "demand_amount":      random.random(),
+    "collected_amount":   random.random(),
+    "outstanding_amount": random.random(),
+    "discount_amount":    random.random(),
+    "refund_amount":      random.random(),
+    "payment_delay_days": random.random(),
 }
-
 # Financial chaos: this run's "normal" ranges — themselves random
 DEMAND_MIN   = random.randint(-10_000_000, 0)
 DEMAND_MAX   = random.randint(0, 50_000_000)
@@ -48,6 +52,15 @@ EXTREME_RATE = {
     "outstanding":  random.random() ,
     "demand":       random.random() ,
     "delay":        random.random()
+}
+# Track the actual number of extreme values written
+actual_extreme_counts = {
+    "discount": 0,
+    "refund": 0,
+    "collected": 0,
+    "outstanding": 0,
+    "demand": 0,
+    "delay": 0
 }
 
 # Invalid-date rate
@@ -79,16 +92,32 @@ def make_transaction_ids(n):
     - duplicates (same ID on multiple rows)
     - completely missing (empty string)
     """
-    pool_size   = random.randint(int(n * 0.5), int(n * 2.5))
-    pool        = [f"TXN{i}" for i in range(1, pool_size + 1)]
-    chosen      = [random.choice(pool) for _ in range(n)]
+    # ── GUARD CLAUSE FOR ZERO RECORDS ──
+    if n == 0:
+        return []
+
+    pool_size = random.randint(0, int(n * 2.5))
+    
+    # Safe check: if pool_size is 0, return all empty strings directly!
+    if pool_size == 0:
+        return [""] * n
+
+    pool = [f"TXN{i}" for i in range(1, pool_size + 1)]
+    chosen = [random.choice(pool) for _ in range(n)]
     return chosen
 
 
 def make_customer_ids(n):
-    """Customer IDs: sometimes sequential, sometimes random, sometimes all same."""
-    style = random.choice(["sequential", "random_pool", "all_same", "alpha_numeric"])
-    if style == "sequential":
+    """Customer IDs: sometimes sequential, sometimes random, sometimes all same, sometimes completely empty."""
+    # ── GUARD CLAUSE FOR ZERO RECORDS ──
+    if n == 0:
+        return []
+
+    style = random.choice(["sequential", "random_pool", "all_same", "alpha_numeric","empty"])
+    
+    if style == "empty":
+        return [""] * n
+    elif style == "sequential":
         return [f"CUST{i}" for i in range(1, n + 1)]
     elif style == "random_pool":
         pool_size = random.randint(5, n)
@@ -103,11 +132,19 @@ def make_customer_ids(n):
 
 
 def make_unit_ids(n):
-    style = random.choice(["sequential", "random_pool", "mixed_format"])
-    if style == "sequential":
+    # ── GUARD CLAUSE FOR ZERO RECORDS ──
+    if n == 0:
+        return []
+
+    style = random.choice(["sequential", "random_pool", "mixed_format", "empty"])
+    
+    if style == "empty":
+        return [""] * n
+    elif style == "sequential":
         return [f"UNIT{i}" for i in range(1, n + 1)]
     elif style == "random_pool":
-        pool_size = random.randint(10, max(11, n // 2))
+        # Safe guard: ensure pool_size is at least 1
+        pool_size = random.randint(1, max(11, n // 2))
         pool = [f"UNIT{i}" for i in range(1, pool_size + 1)]
         return [random.choice(pool) for _ in range(n)]
     else:
@@ -119,8 +156,6 @@ def make_unit_ids(n):
             ])
             for j in range(1, n + 1)
         ]
-
-
 
 #  HELPERS
 
@@ -139,6 +174,7 @@ def random_financial(mn, mx):
 def extreme_or_normal(value, field_key, extreme_mn, extreme_mx):
     """Replace value with an extreme number based on this run's extreme rate."""
     if random.random() < EXTREME_RATE.get(field_key, 0):
+        actual_extreme_counts[field_key] += 1  # <-- Increment our tracker!
         return random.randint(extreme_mn, extreme_mx)
     return value
 
@@ -189,38 +225,61 @@ for i in range(NUM_RECORDS):
     project_id     = random.choice(projects)
 
 
-    # ── Apply missing-field rates ─────────────
+       # ── Apply missing-field rates ─────────────
     transaction_id = maybe_blank(txn_ids[i],  "transaction_id")
     customer_id    = maybe_blank(cust_ids[i], "customer_id")
     unit_id_val    = maybe_blank(unit_ids[i], "unit_id")
-    project_id     = maybe_blank(project_id, "project_id")
+    project_id     = maybe_blank(project_id,  "project_id")
 
-    demand_date_str  = "" if random.random() < MISSING_RATE["demand_date"]  else demand_date.strftime("%Y-%m-%d")
-    payment_date_str = "" if random.random() < MISSING_RATE["payment_date"] else payment_date.strftime("%Y-%m-%d")
+    # Apply to dates
+    demand_date_str  = maybe_blank(demand_date.strftime("%Y-%m-%d"),  "demand_date")
+    payment_date_str = maybe_blank(payment_date.strftime("%Y-%m-%d"), "payment_date")
+
+    # Apply to numericals
+    demand_amount_val      = maybe_blank(demand_amount,      "demand_amount")
+    collected_amount_val   = maybe_blank(collected_amount,   "collected_amount")
+    outstanding_amount_val = maybe_blank(outstanding_amount, "outstanding_amount")
+    discount_amount_val    = maybe_blank(discount_amount,    "discount_amount")
+    refund_amount_val      = maybe_blank(refund_amount,      "refund_amount")
+    payment_delay_days_val = maybe_blank(payment_delay_days, "payment_delay_days")
 
     records.append({
         "transaction_id":     transaction_id,
         "customer_id":        customer_id,
         "project_id":         project_id,
         "unit_id":            unit_id_val,
-        "demand_amount":      demand_amount,
-        "collected_amount":   collected_amount,
-        "outstanding_amount": outstanding_amount,
-        "discount_amount":    discount_amount,
-        "refund_amount":      refund_amount,
-        "payment_delay_days": payment_delay_days,
+        "demand_amount":      demand_amount_val,
+        "collected_amount":   collected_amount_val,
+        "outstanding_amount": outstanding_amount_val,
+        "discount_amount":    discount_amount_val,
+        "refund_amount":      refund_amount_val,
+        "payment_delay_days": payment_delay_days_val,
         "demand_date":        demand_date_str,
         "payment_date":       payment_date_str,
-     
-        
     })
 
 
 # ─────────────────────────────────────────────
-#  SAVE
+#  SAVE & ACTUAL METRICS PRINT
 # ─────────────────────────────────────────────
 
-df = pd.DataFrame(records)
+# Explicitly define columns so that even if records is empty, headers are generated!
+EXPECTED_COLUMNS = [
+    "transaction_id",
+    "customer_id",
+    "project_id",
+    "unit_id",
+    "demand_amount",
+    "collected_amount",
+    "outstanding_amount",
+    "discount_amount",
+    "refund_amount",
+    "payment_delay_days",
+    "demand_date",
+    "payment_date"
+]
+
+df = pd.DataFrame(records, columns=EXPECTED_COLUMNS)
 output_path = "data/sample_finance_data.csv"
 df.to_csv(output_path, index=False)
 
@@ -229,7 +288,30 @@ print(f"  Date universe   : {BASE_DATE.date()} + {DATE_SPREAD_DAYS} days")
 print(f"  Demand range    : {DEMAND_MIN:,} → {DEMAND_MAX:,}")
 print(f"  Discount range  : {DISCOUNT_MIN:,} → {DISCOUNT_MAX:,}")
 print(f"  Delay range     : {DELAY_MIN} → {DELAY_MAX} days")
-print(f"  Missing rates   : { {k: f'{v*100:.0f}%' for k,v in MISSING_RATE.items()} }")
-print(f"  Extreme rates   : { {k: f'{v*100:.0f}%' for k,v in EXTREME_RATE.items()} }")
+
+# CALCULATE ACTUAL MISSING RATE FOR EVERY COLUMN
+actual_missing_rates = {}
+for col in df.columns:
+    missing_count = df[col].isnull().sum() + (df[col] == "").sum()
+    pct = (missing_count / len(df)) * 100 if len(df) > 0 else 0
+    actual_missing_rates[col] = f"{pct:.0f}%"
+
+print(f"  Actual Missing rates : {actual_missing_rates}")
+
+#  CALCULATE ACTUAL EXTREME RATE FOR EVERY TARGET COLUMN
+actual_extreme_rates = {}
+for key, count in actual_extreme_counts.items():
+    # Map key to the actual column name in the DataFrame
+    col_name = "payment_delay_days" if key == "delay" else f"{key}_amount"
+    
+    # If the column is 100% blank, actual extreme rate is physically 0%
+    if col_name in df.columns and df[col_name].fillna("").astype(str).str.strip().eq("").all():
+        pct = 0
+    else:
+        pct = (count / len(df)) * 100 if len(df) > 0 else 0
+        
+    actual_extreme_rates[key] = f"{pct:.0f}%"
+
+print(f"  Actual Extreme rates : {actual_extreme_rates}")
 print(f"  Invalid date %  : {INVALID_DATE_RATE*100:.0f}%")
 print(f"  Projects pool   : {projects}")

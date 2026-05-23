@@ -93,15 +93,16 @@ def rv07_invalid_customer_id_format(df):
     return filled & ~valid
 
 def rv08_transaction_id_large_gap(df):
-    # Extract the numeric part of TXN IDs and check for large jumps
+    # Extract the numeric part of TXN IDs and check for large sequential jumps
     if "transaction_id" not in df.columns: return no_flag(df)
-    nums = df["transaction_id"].str.extract(r'(\d+)')[0]
-    nums = pd.to_numeric(nums, errors="coerce").sort_values()
+    extracted = df["transaction_id"].str.extract(r'(\d+)')[0]
+    nums = pd.to_numeric(extracted, errors="coerce")
+    
+    # Calculate difference between consecutive rows in the original CSV order (no sorting!)
     gaps = nums.diff().abs()
-    large_gap_nums = nums[gaps > MAX_ID_GAP]
-    return df["transaction_id"].str.extract(r'(\d+)')[0].isin(
-        large_gap_nums.astype(str)
-    )
+    
+    # Flag the rows where the jump is greater than MAX_ID_GAP
+    return gaps > MAX_ID_GAP
 
 
 # ── FINANCIAL ────────────────────────────────────────────────────────────────
@@ -282,17 +283,20 @@ def rv33_payment_date_without_collection(df):
 def rv34_same_txn_different_customers(df):
     if "transaction_id" not in df.columns or "customer_id" not in df.columns:
         return no_flag(df)
-    # Find transaction_ids that appear with more than one distinct customer_id
-    counts = df.groupby("transaction_id")["customer_id"].nunique()
+    # Ignore blank transactions and blank customers for this logical check
+    non_blank = df[~is_blank(df["transaction_id"]) & ~is_blank(df["customer_id"])]
+    counts = non_blank.groupby("transaction_id")["customer_id"].nunique()
     bad_txns = counts[counts > 1].index
-    return df["transaction_id"].isin(bad_txns)
+    return df["transaction_id"].isin(bad_txns) & ~is_blank(df["transaction_id"])
 
 def rv35_same_txn_different_demand(df):
     if "transaction_id" not in df.columns or "demand_amount" not in df.columns:
         return no_flag(df)
-    counts = df.groupby("transaction_id")["demand_amount"].nunique()
+    # Ignore blank transactions and blank demands for this logical check
+    non_blank = df[~is_blank(df["transaction_id"]) & ~is_blank(df["demand_amount"])]
+    counts = non_blank.groupby("transaction_id")["demand_amount"].nunique()
     bad_txns = counts[counts > 1].index
-    return df["transaction_id"].isin(bad_txns)
+    return df["transaction_id"].isin(bad_txns) & ~is_blank(df["transaction_id"])
 
 def rv36_duplicate_full_rows(df):
     return df.duplicated(keep=False)
@@ -300,27 +304,48 @@ def rv36_duplicate_full_rows(df):
 def rv37_identical_demand_for_same_unit(df):
     if "unit_id" not in df.columns or "demand_amount" not in df.columns:
         return no_flag(df)
-    # Flag unit_ids where every row has the exact same demand_amount (and there are >1 rows)
-    unit_counts  = df.groupby("unit_id")["demand_amount"].transform("count")
-    unit_nunique = df.groupby("unit_id")["demand_amount"].transform("nunique")
-    return (unit_counts > 1) & (unit_nunique == 1)
+    
+    # Filter out blanks first
+    mask_valid = ~is_blank(df["unit_id"]) & ~is_blank(df["demand_amount"])
+    valid_df = df[mask_valid]
+    
+    if valid_df.empty:
+        return no_flag(df)
+        
+    unit_counts  = valid_df.groupby("unit_id")["demand_amount"].transform("count")
+    unit_nunique = valid_df.groupby("unit_id")["demand_amount"].transform("nunique")
+    bad_mask = (unit_counts > 1) & (unit_nunique == 1)
+    
+    # Map back to the original index safely
+    return mask_valid & bad_mask.reindex(df.index, fill_value=False)
 
 def rv38_likely_duplicate_submission(df):
-    # Same customer + unit + demand_date but different transaction_ids
     needed = ["customer_id", "unit_id", "demand_date", "transaction_id"]
     if not all(c in df.columns for c in needed): return no_flag(df)
     key = ["customer_id", "unit_id", "demand_date"]
-    counts = df.groupby(key)["transaction_id"].nunique()
-    bad    = counts[counts > 1].reset_index()
-    merged = df.merge(bad[key], on=key, how="left", indicator=True)
-    return merged["_merge"] == "both"
+    
+    # Drop rows where any of the duplicate check keys is blank
+    mask_blank = is_blank(df["customer_id"]) | is_blank(df["unit_id"]) | is_blank(df["demand_date"]) | is_blank(df["transaction_id"])
+    
+    # Find keys that have more than 1 unique transaction_id
+    bad_keys = df[~mask_blank].groupby(key)["transaction_id"].nunique()
+    bad_keys = bad_keys[bad_keys > 1].index
+    
+    if bad_keys.empty:
+        return no_flag(df)
+        
+    # Check if the row's key is in bad_keys, preserving the original index perfectly
+    row_keys = pd.MultiIndex.from_frame(df[key])
+    return ~mask_blank & row_keys.isin(bad_keys)
 
 def rv39_too_many_units_per_customer(df):
     if "customer_id" not in df.columns or "unit_id" not in df.columns:
         return no_flag(df)
-    unit_counts = df.groupby("customer_id")["unit_id"].nunique()
+    # Ignore blank customers/units for this behavioral check
+    non_blank = df[~is_blank(df["customer_id"]) & ~is_blank(df["unit_id"])]
+    unit_counts = non_blank.groupby("customer_id")["unit_id"].nunique()
     bad_customers = unit_counts[unit_counts > MAX_UNITS_PER_CUSTOMER].index
-    return df["customer_id"].isin(bad_customers)
+    return df["customer_id"].isin(bad_customers) & ~is_blank(df["customer_id"])
 
 def rv40_all_rows_same_demand_date(df):
     if "demand_date" not in df.columns: return no_flag(df)
