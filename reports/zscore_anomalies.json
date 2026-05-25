@@ -1,0 +1,23 @@
+[
+    {
+        "transaction_id": "TXN24",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "U-865",
+        "demand_amount": null,
+        "collected_amount": 964935767.0,
+        "outstanding_amount": -1528257420.0,
+        "discount_amount": 985491868.0,
+        "refund_amount": 419746063.0,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": "2023-05-11",
+        "demand_z_score": null,
+        "collectedamount_z_score": 2.1341145966,
+        "outstandingamount_z_score": -3.268343211,
+        "discount_z_score": 1.8262262014,
+        "refundamount_z_score": 0.3794800344,
+        "paymentdelay_z_score": null,
+        "anomaly_reason": "outstanding_amount (Z=-3.27)"
+    }
+]
