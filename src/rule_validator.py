@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, date
 
+from src.csv_loader import load_finance_csv
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  CONFIGURATION
@@ -510,7 +512,12 @@ def print_report(df, violations):
 
 def validate_finance_csv(path="data/sample_finance_data.csv"):
 
-    df = pd.read_csv(path, dtype=object, keep_default_na=True)
+    # Load safely using your custom structural loader!
+    df = load_finance_csv(path)
+    
+    # Safety guard: if the file was rejected by the loader, exit gracefully
+    if df is None:
+        return None, None
 
     violations = run_validation(df)
 
