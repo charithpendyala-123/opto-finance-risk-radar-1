@@ -1,6 +1,11 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime, date
+import sys
+import os
+
+# Dynamically add the parent directory to the search path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.csv_loader import load_finance_csv
 
