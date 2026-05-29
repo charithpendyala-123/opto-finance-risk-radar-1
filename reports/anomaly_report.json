@@ -1,0 +1,4266 @@
+[
+    {
+        "transaction_id": "TXN32",
+        "customer_id": "CUST1",
+        "project_id": null,
+        "unit_id": "BLK4-13",
+        "demand_amount": null,
+        "collected_amount": 358322510.0,
+        "outstanding_amount": null,
+        "discount_amount": 411401798.0,
+        "refund_amount": 916980473.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-06-16",
+        "payment_date": "2026-06-04",
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0309,
+            "reason": "Abnormal combination of abnormal refund volume and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN9",
+        "customer_id": null,
+        "project_id": "TERRA",
+        "unit_id": "BLK2-46",
+        "demand_amount": 670539350.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 694772939.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-06-08",
+        "payment_date": "2025-10-01",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (670,539,350) exceeds local fence (25,364,835)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0094,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN24",
+        "customer_id": "CUST10",
+        "project_id": null,
+        "unit_id": "U-180",
+        "demand_amount": -6567262.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": 645177304.0,
+        "refund_amount": 843164652.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-18",
+        "payment_date": "2026-06-09",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0117,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN20",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "BLK1-44",
+        "demand_amount": null,
+        "collected_amount": 726668916.0,
+        "outstanding_amount": 734362030.0,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0896,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_13",
+        "customer_id": null,
+        "project_id": "APEX",
+        "unit_id": "U-679",
+        "demand_amount": null,
+        "collected_amount": 706096076.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-24",
+        "payment_date": "2026-01-03",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0423,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN32",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 918753721.0,
+        "outstanding_amount": null,
+        "discount_amount": 182977679.0,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-24",
+        "payment_date": null,
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0309,
+            "reason": "Abnormal combination of abnormal refund volume and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN18",
+        "customer_id": null,
+        "project_id": "APEX",
+        "unit_id": "UNIT15",
+        "demand_amount": null,
+        "collected_amount": 858646484.0,
+        "outstanding_amount": null,
+        "discount_amount": 824654062.0,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-07",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0212,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_19",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "BLK1-32",
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": 189403524.0,
+        "discount_amount": 758234702.0,
+        "refund_amount": 318603851.0,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": "2031-04-27",
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0204,
+            "reason": "Abnormal combination of high discount exposure and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN38",
+        "customer_id": null,
+        "project_id": "TERRA",
+        "unit_id": "BLK8-47",
+        "demand_amount": 899693409.0,
+        "collected_amount": 34420283.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 245672107.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-06-25",
+        "payment_date": "2027-03-24",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (899,693,409) exceeds local fence (25,364,835)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (153,461,599) exceeds local fence (25,364,835)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0022,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_21",
+        "customer_id": null,
+        "project_id": "NOVA",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": 183123679.0,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-21",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1456,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN13",
+        "customer_id": "CUST21",
+        "project_id": "APEX",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 820237894.0,
+        "outstanding_amount": 130797351.0,
+        "discount_amount": null,
+        "refund_amount": 247124922.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-02",
+        "payment_date": "2026-06-08",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "unit_id",
+                    "case": "Critical Fraud Flag: Phantom Settlement",
+                    "reason": "Payment delay > 2 recorded with zero collections and zero outstanding balance reduction."
+                },
+                {
+                    "lens": "payment_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily collection volume (2 payments) exceeds upper global threshold (1.0)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0835,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN6",
+        "customer_id": "CUST22",
+        "project_id": "NOVA",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 364350837.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": 155,
+        "demand_date": null,
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (375,509,825) exceeds local fence (0)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1288,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN20",
+        "customer_id": "CUST25",
+        "project_id": "AQUA",
+        "unit_id": "UNIT25",
+        "demand_amount": 1996011.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 823099947.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-28",
+        "payment_date": "2035-04-06",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0896,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_27",
+        "customer_id": null,
+        "project_id": "TERRA",
+        "unit_id": "UNIT26",
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": -432155776.0,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-26",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0777,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_31",
+        "customer_id": null,
+        "project_id": "AQUA",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": "2026-05-21",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "payment_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily collection volume (2 payments) exceeds upper global threshold (1.0)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1328,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_33",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "U-320",
+        "demand_amount": null,
+        "collected_amount": 28647316.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 81952867.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-07",
+        "payment_date": "2026-02-19",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1338,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_35",
+        "customer_id": null,
+        "project_id": "TERRA",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 19404816.0,
+        "outstanding_amount": 35417769.0,
+        "discount_amount": 815765645.0,
+        "refund_amount": 9012927.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-06-21",
+        "payment_date": "2032-06-22",
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0751,
+            "reason": "Abnormal combination of high discount exposure, abnormal invoice-to-payment window and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_36",
+        "customer_id": null,
+        "project_id": "NOVA",
+        "unit_id": "BLK3-12",
+        "demand_amount": null,
+        "collected_amount": 19776460.0,
+        "outstanding_amount": 243949933.0,
+        "discount_amount": null,
+        "refund_amount": 331055444.0,
+        "payment_delay_days": 48,
+        "demand_date": "2026-07-25",
+        "payment_date": "2026-09-11",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "payment_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily collection volume (2 payments) exceeds upper global threshold (1.0)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0894,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN29",
+        "customer_id": null,
+        "project_id": "AQUA",
+        "unit_id": "UNIT38",
+        "demand_amount": 967878936.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-11",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (967,878,936) exceeds local fence (28,553,830)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0451,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_40",
+        "customer_id": "CUST39",
+        "project_id": "APEX",
+        "unit_id": null,
+        "demand_amount": 140590781.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 304211111.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-24",
+        "payment_date": "2034-04-03",
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0495,
+            "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_42",
+        "customer_id": "CUST41",
+        "project_id": null,
+        "unit_id": "UNIT41",
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": 973987410.0,
+        "discount_amount": null,
+        "refund_amount": 32110812.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-26",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0914,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN20",
+        "customer_id": null,
+        "project_id": "NOVA",
+        "unit_id": "BLK6-3",
+        "demand_amount": null,
+        "collected_amount": 920491689.0,
+        "outstanding_amount": 864481874.0,
+        "discount_amount": null,
+        "refund_amount": 30278971.0,
+        "payment_delay_days": 1341,
+        "demand_date": "2026-05-24",
+        "payment_date": "2030-01-24",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0896,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_46",
+        "customer_id": null,
+        "project_id": "NOVA",
+        "unit_id": null,
+        "demand_amount": 5080697.0,
+        "collected_amount": 419915601.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 89702042.0,
+        "payment_delay_days": 2459,
+        "demand_date": "2026-05-28",
+        "payment_date": "2025-06-09",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (5,080,697) exceeds local fence (0)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0264,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_47",
+        "customer_id": null,
+        "project_id": "NOVA",
+        "unit_id": null,
+        "demand_amount": 806262680.0,
+        "collected_amount": 887067889.0,
+        "outstanding_amount": null,
+        "discount_amount": 10561501.0,
+        "refund_amount": 330248698.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-25",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (806,262,680) exceeds local fence (0)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0317,
+            "reason": "Abnormal combination of financial and temporal behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN35",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "UNIT48",
+        "demand_amount": 558556231.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-13",
+        "payment_date": "2034-11-14",
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0178,
+            "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN22",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 959603528.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 579024244.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-31",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (507,749,632) exceeds local fence (0)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0281,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN34",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "U-311",
+        "demand_amount": 160231670.0,
+        "collected_amount": 987130536.0,
+        "outstanding_amount": 122124749.0,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-30",
+        "payment_date": "2035-05-15",
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0921,
+            "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN38",
+        "customer_id": "CUST51",
+        "project_id": "TERRA",
+        "unit_id": null,
+        "demand_amount": 153461599.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": "2025-08-07",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (899,693,409) exceeds local fence (25,364,835)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (153,461,599) exceeds local fence (25,364,835)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0022,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN19",
+        "customer_id": "CUST54",
+        "project_id": "AQUA",
+        "unit_id": null,
+        "demand_amount": 6591750.0,
+        "collected_amount": 268295070.0,
+        "outstanding_amount": null,
+        "discount_amount": 570854731.0,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-19",
+        "payment_date": "2026-02-23",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0272,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN22",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 814367876.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-04",
+        "payment_date": "2026-04-27",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (507,749,632) exceeds local fence (0)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0281,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN36",
+        "customer_id": null,
+        "project_id": "SKYLINE",
+        "unit_id": "U-123",
+        "demand_amount": null,
+        "collected_amount": 468207062.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 678323988.0,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": "2034-03-04",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Collection Outlier Flag",
+                    "reason": "Collection (982,061,242) exceeds local fence (575,449,684)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (843,240,423) exceeds local fence (0)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (0.74) exceeds local fence (0.00) - Potential Phantom Billing"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0394,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN45",
+        "customer_id": "CUST59",
+        "project_id": null,
+        "unit_id": "UNIT59",
+        "demand_amount": 564779636.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": 115177860.0,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-06-02",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (979,481,910) exceeds local fence (806,385,370)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0854,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN20",
+        "customer_id": "CUST60",
+        "project_id": "NOVA",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 290551661.0,
+        "outstanding_amount": 658956336.0,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-19",
+        "payment_date": "2026-02-10",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0896,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN45",
+        "customer_id": null,
+        "project_id": "GREEN",
+        "unit_id": null,
+        "demand_amount": 470433734.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": "2025-11-04",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (979,481,910) exceeds local fence (806,385,370)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0854,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_64",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "U-817",
+        "demand_amount": -6633843.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-21",
+        "payment_date": "2033-08-15",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0443,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_66",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 763797317.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 478307363.0,
+        "payment_delay_days": 285,
+        "demand_date": "2026-07-03",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0724,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_68",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "U-186",
+        "demand_amount": 577297571.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": 138,
+        "demand_date": "2026-08-25",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "unit_id",
+                    "case": "Critical Fraud Flag: Phantom Settlement",
+                    "reason": "Payment delay > 2 recorded with zero collections and zero outstanding balance reduction."
+                },
+                {
+                    "lens": "customer_id",
+                    "case": "Billing Escalation Flag",
+                    "reason": "Monotonically increasing demand amounts (-6,567,262 -> 0 -> 577,297,571) across 3 sequential invoices."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0979,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN6",
+        "customer_id": "CUST68",
+        "project_id": "NOVA",
+        "unit_id": null,
+        "demand_amount": 375509825.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-20",
+        "payment_date": "2025-11-01",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (375,509,825) exceeds local fence (0)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1288,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN11",
+        "customer_id": null,
+        "project_id": "TERRA",
+        "unit_id": "U-331",
+        "demand_amount": null,
+        "collected_amount": 280193353.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-29",
+        "payment_date": "2026-12-01",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (370,532,697) exceeds local fence (0)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (0.05) exceeds local fence (0.00) - Potential Phantom Billing"
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1339,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN33",
+        "customer_id": null,
+        "project_id": "SKYLINE",
+        "unit_id": "U-898",
+        "demand_amount": 70025353.0,
+        "collected_amount": 513899084.0,
+        "outstanding_amount": -432206389.0,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": -18,
+        "demand_date": "2026-05-24",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (70,025,353) exceeds local fence (0)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Laundering Cash Flag",
+                    "reason": "Owed/Demand ratio (-6.17) falls below local fence (0.00) - Potential Overpayment"
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (5.14) exceeds local fence (0.00) - Potential Phantom Billing"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0462,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN17",
+        "customer_id": "CUST72",
+        "project_id": null,
+        "unit_id": "BLK9-47",
+        "demand_amount": 12312231.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 380802681.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-03",
+        "payment_date": "2036-04-25",
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0084,
+            "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_74",
+        "customer_id": "CUST73",
+        "project_id": "AQUA",
+        "unit_id": null,
+        "demand_amount": 400424350.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 450633245.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-15",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (400,424,350) exceeds local fence (28,553,830)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1047,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN16",
+        "customer_id": "CUST74",
+        "project_id": "AQUA",
+        "unit_id": "U-120",
+        "demand_amount": 406315033.0,
+        "collected_amount": 12672069.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 311544747.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-21",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (406,315,033) exceeds local fence (28,553,830)"
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1013,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_78",
+        "customer_id": null,
+        "project_id": "TERRA",
+        "unit_id": "BLK9-35",
+        "demand_amount": 336292566.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-11",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (336,292,566) exceeds local fence (25,364,835)"
+                },
+                {
+                    "lens": "customer_id",
+                    "case": "Billing Escalation Flag",
+                    "reason": "Monotonically increasing demand amounts (0 -> 260,803,372 -> 336,292,566) across 3 sequential invoices."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.119,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN33",
+        "customer_id": null,
+        "project_id": "APEX",
+        "unit_id": null,
+        "demand_amount": 164561072.0,
+        "collected_amount": 445076232.0,
+        "outstanding_amount": 846358837.0,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-31",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (70,025,353) exceeds local fence (0)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Laundering Cash Flag",
+                    "reason": "Owed/Demand ratio (-6.17) falls below local fence (0.00) - Potential Overpayment"
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (5.14) exceeds local fence (0.00) - Potential Phantom Billing"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0462,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_80",
+        "customer_id": null,
+        "project_id": "SKYLINE",
+        "unit_id": "UNIT79",
+        "demand_amount": 994079874.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": 1700,
+        "demand_date": null,
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (994,079,874) exceeds local fence (0)"
+                },
+                {
+                    "lens": "unit_id",
+                    "case": "Critical Fraud Flag: Phantom Settlement",
+                    "reason": "Payment delay > 2 recorded with zero collections and zero outstanding balance reduction."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0179,
+            "reason": "Abnormal combination of financial and temporal behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN29",
+        "customer_id": null,
+        "project_id": "SKYLINE",
+        "unit_id": "U-405",
+        "demand_amount": null,
+        "collected_amount": 878816930.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 67451440.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-25",
+        "payment_date": "2033-03-13",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (967,878,936) exceeds local fence (28,553,830)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0451,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_84",
+        "customer_id": null,
+        "project_id": "AQUA",
+        "unit_id": "UNIT83",
+        "demand_amount": null,
+        "collected_amount": 608391772.0,
+        "outstanding_amount": 529932581.0,
+        "discount_amount": null,
+        "refund_amount": 382732169.0,
+        "payment_delay_days": -279,
+        "demand_date": "2026-07-19",
+        "payment_date": "2026-04-04",
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Collection Outlier Flag",
+                    "reason": "Collection (608,391,772) exceeds local fence (458,347,058)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0204,
+            "reason": "Abnormal combination of financial and temporal behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN2",
+        "customer_id": null,
+        "project_id": "NOVA",
+        "unit_id": "UNIT84",
+        "demand_amount": null,
+        "collected_amount": 877118906.0,
+        "outstanding_amount": null,
+        "discount_amount": 303700863.0,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-05",
+        "payment_date": "2034-03-01",
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (968,226,651) exceeds local fence (28,553,830)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (0.99) exceeds local fence (0.00) - Potential Phantom Billing"
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0569,
+            "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN22",
+        "customer_id": "CUST86",
+        "project_id": "NOVA",
+        "unit_id": null,
+        "demand_amount": 507749632.0,
+        "collected_amount": 649147653.0,
+        "outstanding_amount": null,
+        "discount_amount": 62636349.0,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-09",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (507,749,632) exceeds local fence (0)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0281,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_89",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": 368516489.0,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-26",
+        "payment_date": "2025-09-21",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0213,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_90",
+        "customer_id": null,
+        "project_id": "TERRA",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 965333483.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 533541159.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-06-26",
+        "payment_date": "2026-05-13",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Collection Outlier Flag",
+                    "reason": "Collection (965,333,483) exceeds local fence (575,449,684)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0413,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_98",
+        "customer_id": null,
+        "project_id": "GREEN",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 42367706.0,
+        "outstanding_amount": 547970899.0,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-27",
+        "payment_date": "2031-09-21",
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0318,
+            "reason": "Abnormal combination of financial and temporal behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN33",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "UNIT98",
+        "demand_amount": null,
+        "collected_amount": 10064205.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": 3630,
+        "demand_date": "2026-05-12",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (70,025,353) exceeds local fence (0)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Laundering Cash Flag",
+                    "reason": "Owed/Demand ratio (-6.17) falls below local fence (0.00) - Potential Overpayment"
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (5.14) exceeds local fence (0.00) - Potential Phantom Billing"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0462,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_101",
+        "customer_id": null,
+        "project_id": "AQUA",
+        "unit_id": "U-278",
+        "demand_amount": 11421532.0,
+        "collected_amount": null,
+        "outstanding_amount": 946512409.0,
+        "discount_amount": null,
+        "refund_amount": 171605304.0,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (82.87) exceeds local fence (0.00) - Potential Phantom Billing"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0899,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN29",
+        "customer_id": null,
+        "project_id": "NOVA",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 313509231.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-06-27",
+        "payment_date": "2026-01-28",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (967,878,936) exceeds local fence (28,553,830)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0451,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN19",
+        "customer_id": null,
+        "project_id": "GREEN",
+        "unit_id": "BLK7-19",
+        "demand_amount": 620690507.0,
+        "collected_amount": 73342768.0,
+        "outstanding_amount": null,
+        "discount_amount": 384544564.0,
+        "refund_amount": 456058992.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-07",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0272,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_109",
+        "customer_id": "CUST108",
+        "project_id": "AQUA",
+        "unit_id": null,
+        "demand_amount": 870329244.0,
+        "collected_amount": 351089736.0,
+        "outstanding_amount": 58881063.0,
+        "discount_amount": null,
+        "refund_amount": 104987851.0,
+        "payment_delay_days": 239,
+        "demand_date": "2026-06-28",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (870,329,244) exceeds local fence (28,553,830)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (0.07) exceeds local fence (0.00) - Potential Phantom Billing"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0168,
+            "reason": "Abnormal combination of financial and temporal behavior"
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_110",
+        "customer_id": null,
+        "project_id": "SKYLINE",
+        "unit_id": null,
+        "demand_amount": 77032992.0,
+        "collected_amount": 881874798.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-24",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (77,032,992) exceeds local fence (0)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0756,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN32",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "UNIT111",
+        "demand_amount": null,
+        "collected_amount": 5786376.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 304460790.0,
+        "payment_delay_days": 148,
+        "demand_date": null,
+        "payment_date": null,
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0309,
+            "reason": "Abnormal combination of abnormal refund volume and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN13",
+        "customer_id": "CUST113",
+        "project_id": "AQUA",
+        "unit_id": "BLK5-42",
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 47621468.0,
+        "payment_delay_days": 1478,
+        "demand_date": "2026-07-29",
+        "payment_date": "2026-05-21",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "unit_id",
+                    "case": "Critical Fraud Flag: Phantom Settlement",
+                    "reason": "Payment delay > 2 recorded with zero collections and zero outstanding balance reduction."
+                },
+                {
+                    "lens": "payment_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily collection volume (2 payments) exceeds upper global threshold (1.0)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0835,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN45",
+        "customer_id": null,
+        "project_id": "GREEN",
+        "unit_id": "BLK3-18",
+        "demand_amount": 979481910.0,
+        "collected_amount": 905344318.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 311168999.0,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": "2035-07-12",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (979,481,910) exceeds local fence (806,385,370)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0854,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_118",
+        "customer_id": "CUST117",
+        "project_id": null,
+        "unit_id": "U-720",
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": 329372662.0,
+        "refund_amount": 483322274.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-21",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1048,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_120",
+        "customer_id": "CUST119",
+        "project_id": "SKYLINE",
+        "unit_id": "BLK6-6",
+        "demand_amount": null,
+        "collected_amount": 920936476.0,
+        "outstanding_amount": null,
+        "discount_amount": 834502123.0,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-24",
+        "payment_date": null,
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0,
+            "reason": "Abnormal combination of high discount exposure and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_121",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": null,
+        "demand_amount": 448170992.0,
+        "collected_amount": 371568050.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": 3004,
+        "demand_date": "2026-06-13",
+        "payment_date": null,
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0312,
+            "reason": "Abnormal combination of extreme payment latency and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN16",
+        "customer_id": "CUST123",
+        "project_id": null,
+        "unit_id": "BLK6-2",
+        "demand_amount": null,
+        "collected_amount": 433005784.0,
+        "outstanding_amount": null,
+        "discount_amount": 366000218.0,
+        "refund_amount": 460252216.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-31",
+        "payment_date": "2025-08-11",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (406,315,033) exceeds local fence (28,553,830)"
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1013,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN20",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "UNIT124",
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": 832815996.0,
+        "refund_amount": 214011197.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-26",
+        "payment_date": "2025-10-13",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0896,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN17",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "UNIT126",
+        "demand_amount": null,
+        "collected_amount": 717629944.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-06-13",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0084,
+            "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN26",
+        "customer_id": null,
+        "project_id": "APEX",
+        "unit_id": null,
+        "demand_amount": 256821450.0,
+        "collected_amount": null,
+        "outstanding_amount": 39333619.0,
+        "discount_amount": null,
+        "refund_amount": 490146043.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-03",
+        "payment_date": "2025-09-08",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (0.15) exceeds local fence (0.00) - Potential Phantom Billing"
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0747,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN20",
+        "customer_id": null,
+        "project_id": "NOVA",
+        "unit_id": "BLK5-26",
+        "demand_amount": null,
+        "collected_amount": 306811601.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-20",
+        "payment_date": "2026-08-15",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0896,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN35",
+        "customer_id": null,
+        "project_id": "SKYLINE",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 18385790.0,
+        "outstanding_amount": null,
+        "discount_amount": 193163601.0,
+        "refund_amount": 384990113.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-26",
+        "payment_date": null,
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0178,
+            "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_133",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "U-639",
+        "demand_amount": -6939284.0,
+        "collected_amount": 775887217.0,
+        "outstanding_amount": -1221870526.0,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-03",
+        "payment_date": "2030-04-12",
+        "engines_flagged": [
+            "Z-Score",
+            "IQR",
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 4,
+        "zscore_details": {
+            "flagged": true,
+            "reason": "outstanding_amount (Z=-3.66)"
+        },
+        "iqr_details": {
+            "flagged": true,
+            "reason": "outstanding_amount (IQR=633318650.25)"
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0744,
+            "reason": "Abnormal combination of financial and temporal behavior"
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_135",
+        "customer_id": "CUST134",
+        "project_id": null,
+        "unit_id": "BLK2-4",
+        "demand_amount": 617264646.0,
+        "collected_amount": 495870946.0,
+        "outstanding_amount": 760202071.0,
+        "discount_amount": 18501965.0,
+        "refund_amount": 548408981.0,
+        "payment_delay_days": 62,
+        "demand_date": "2026-07-11",
+        "payment_date": "2026-09-11",
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "payment_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily collection volume (2 payments) exceeds upper global threshold (1.0)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0769,
+            "reason": "Abnormal combination of financial and temporal behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN6",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "UNIT137",
+        "demand_amount": 7503525.0,
+        "collected_amount": 428087854.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 438232800.0,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (375,509,825) exceeds local fence (0)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1288,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_141",
+        "customer_id": null,
+        "project_id": "APEX",
+        "unit_id": "U-969",
+        "demand_amount": 691637382.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 550407288.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-31",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (691,637,382) exceeds local fence (411,402,680)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0718,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN32",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "BLK10-17",
+        "demand_amount": null,
+        "collected_amount": 212880894.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": "2027-02-15",
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0309,
+            "reason": "Abnormal combination of abnormal refund volume and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN34",
+        "customer_id": null,
+        "project_id": "SKYLINE",
+        "unit_id": null,
+        "demand_amount": -7769810.0,
+        "collected_amount": 11452619.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": 2292,
+        "demand_date": "2026-07-18",
+        "payment_date": null,
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0921,
+            "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN36",
+        "customer_id": null,
+        "project_id": "NOVA",
+        "unit_id": null,
+        "demand_amount": 843240423.0,
+        "collected_amount": 426981112.0,
+        "outstanding_amount": 623608042.0,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-28",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Collection Outlier Flag",
+                    "reason": "Collection (982,061,242) exceeds local fence (575,449,684)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (843,240,423) exceeds local fence (0)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (0.74) exceeds local fence (0.00) - Potential Phantom Billing"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0394,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_148",
+        "customer_id": null,
+        "project_id": "APEX",
+        "unit_id": "BLK10-50",
+        "demand_amount": 995439533.0,
+        "collected_amount": 457911525.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 649697861.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-16",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (995,439,533) exceeds local fence (411,402,680)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0043,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN24",
+        "customer_id": "CUST150",
+        "project_id": "NOVA",
+        "unit_id": "BLK7-42",
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": 54568796.0,
+        "discount_amount": 528128599.0,
+        "refund_amount": 320385775.0,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": "2030-06-18",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0117,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_152",
+        "customer_id": "CUST151",
+        "project_id": null,
+        "unit_id": "U-455",
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 46273939.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-07",
+        "payment_date": "2031-02-08",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0486,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN2",
+        "customer_id": null,
+        "project_id": "AQUA",
+        "unit_id": "UNIT153",
+        "demand_amount": 968226651.0,
+        "collected_amount": 212179713.0,
+        "outstanding_amount": 962627075.0,
+        "discount_amount": null,
+        "refund_amount": 227468379.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-06-11",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (968,226,651) exceeds local fence (28,553,830)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (0.99) exceeds local fence (0.00) - Potential Phantom Billing"
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0569,
+            "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_156",
+        "customer_id": null,
+        "project_id": "TERRA",
+        "unit_id": "BLK1-7",
+        "demand_amount": null,
+        "collected_amount": 928201000.0,
+        "outstanding_amount": 505178506.0,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Collection Outlier Flag",
+                    "reason": "Collection (928,201,000) exceeds local fence (575,449,684)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0655,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN18",
+        "customer_id": null,
+        "project_id": "SKYLINE",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 200023571.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-27",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0212,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN26",
+        "customer_id": null,
+        "project_id": "GREEN",
+        "unit_id": "BLK4-24",
+        "demand_amount": null,
+        "collected_amount": 12644219.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 295474559.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-26",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (0.15) exceeds local fence (0.00) - Potential Phantom Billing"
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0747,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN35",
+        "customer_id": "CUST159",
+        "project_id": "AQUA",
+        "unit_id": null,
+        "demand_amount": 9312345.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 679345003.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-11",
+        "payment_date": "2026-11-20",
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0178,
+            "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_161",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "U-156",
+        "demand_amount": 697179132.0,
+        "collected_amount": 358119223.0,
+        "outstanding_amount": 410028914.0,
+        "discount_amount": 182884986.0,
+        "refund_amount": 253853991.0,
+        "payment_delay_days": 3520,
+        "demand_date": null,
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "customer_id",
+                    "case": "High Policy Outlier Flag: Kickback Discount",
+                    "reason": "High discount (26%) approved on payment delayed by 3520.0 days."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.1262,
+            "reason": "Abnormal combination of extreme payment latency and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN36",
+        "customer_id": "CUST163",
+        "project_id": "TERRA",
+        "unit_id": "U-539",
+        "demand_amount": -6822546.0,
+        "collected_amount": 982061242.0,
+        "outstanding_amount": null,
+        "discount_amount": 170665521.0,
+        "refund_amount": 429622413.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-18",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Collection Outlier Flag",
+                    "reason": "Collection (982,061,242) exceeds local fence (575,449,684)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (843,240,423) exceeds local fence (0)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (0.74) exceeds local fence (0.00) - Potential Phantom Billing"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0394,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN22",
+        "customer_id": null,
+        "project_id": "AQUA",
+        "unit_id": "U-299",
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": 593019248.0,
+        "discount_amount": null,
+        "refund_amount": 512527006.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-06-29",
+        "payment_date": "2030-08-13",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (507,749,632) exceeds local fence (0)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0281,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_170",
+        "customer_id": "CUST169",
+        "project_id": null,
+        "unit_id": "UNIT169",
+        "demand_amount": 5936944.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": 893536810.0,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-20",
+        "payment_date": "2026-09-06",
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0148,
+            "reason": "Abnormal combination of high discount exposure and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_174",
+        "customer_id": null,
+        "project_id": "APEX",
+        "unit_id": null,
+        "demand_amount": 337902755.0,
+        "collected_amount": 900153637.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 465242846.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-22",
+        "payment_date": "2026-06-11",
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0006,
+            "reason": "Abnormal combination of financial and temporal behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN38",
+        "customer_id": null,
+        "project_id": "TERRA",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": 163888087.0,
+        "discount_amount": 897310357.0,
+        "refund_amount": 679909044.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-08-08",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (899,693,409) exceeds local fence (25,364,835)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (153,461,599) exceeds local fence (25,364,835)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0022,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "TXN11",
+        "customer_id": null,
+        "project_id": "SKYLINE",
+        "unit_id": "U-345",
+        "demand_amount": 370532697.0,
+        "collected_amount": 28884260.0,
+        "outstanding_amount": 17746165.0,
+        "discount_amount": null,
+        "refund_amount": 195517765.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-26",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (370,532,697) exceeds local fence (0)"
+                },
+                {
+                    "lens": "project_id",
+                    "case": "Phantom Billing Flag",
+                    "reason": "Owed/Demand ratio (0.05) exceeds local fence (0.00) - Potential Phantom Billing"
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1339,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_178",
+        "customer_id": "CUST177",
+        "project_id": "NOVA",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 8723556.0,
+        "outstanding_amount": 874230018.0,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-21",
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (5 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.1172,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_179",
+        "customer_id": null,
+        "project_id": "APEX",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": 372578283.0,
+        "refund_amount": 244961145.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-05-28",
+        "payment_date": "2031-11-02",
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0334,
+            "reason": "Abnormal combination of financial and temporal behavior"
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_180",
+        "customer_id": null,
+        "project_id": "AQUA",
+        "unit_id": null,
+        "demand_amount": null,
+        "collected_amount": 183338823.0,
+        "outstanding_amount": 625647279.0,
+        "discount_amount": null,
+        "refund_amount": 509711606.0,
+        "payment_delay_days": 3066,
+        "demand_date": null,
+        "payment_date": null,
+        "engines_flagged": [
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": false,
+            "anomalies": []
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.0369,
+            "reason": "Abnormal combination of extreme payment latency and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN24",
+        "customer_id": null,
+        "project_id": "APEX",
+        "unit_id": null,
+        "demand_amount": 167511016.0,
+        "collected_amount": 23830463.0,
+        "outstanding_amount": null,
+        "discount_amount": 120830366.0,
+        "refund_amount": 157277923.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-06-11",
+        "payment_date": "2025-12-18",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0117,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_184",
+        "customer_id": "CUST183",
+        "project_id": null,
+        "unit_id": null,
+        "demand_amount": 1561767.0,
+        "collected_amount": null,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": null,
+        "payment_delay_days": null,
+        "demand_date": "2026-06-11",
+        "payment_date": "2036-02-22",
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.002,
+            "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN45",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "U-521",
+        "demand_amount": null,
+        "collected_amount": 20601711.0,
+        "outstanding_amount": null,
+        "discount_amount": null,
+        "refund_amount": 46870912.0,
+        "payment_delay_days": null,
+        "demand_date": "2026-07-18",
+        "payment_date": "2025-12-20",
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (979,481,910) exceeds local fence (806,385,370)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0854,
+            "reason": null
+        }
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_187",
+        "customer_id": null,
+        "project_id": null,
+        "unit_id": "BLK6-45",
+        "demand_amount": 17071560.0,
+        "collected_amount": null,
+        "outstanding_amount": 333139134.0,
+        "discount_amount": 926046905.0,
+        "refund_amount": null,
+        "payment_delay_days": 1798,
+        "demand_date": "2026-06-11",
+        "payment_date": "2031-05-14",
+        "engines_flagged": [
+            "Group-wise",
+            "Isolation Forest"
+        ],
+        "total_engines_flagged": 2,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "customer_id",
+                    "case": "High Policy Outlier Flag: Kickback Discount",
+                    "reason": "High discount (5425%) approved on payment delayed by 1798.0 days."
+                },
+                {
+                    "lens": "demand_date",
+                    "case": "Bulk System Glitch Flag",
+                    "reason": "System daily demand volume (4 invoices) exceeds upper global threshold (3.5)."
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": true,
+            "score": -0.1409,
+            "reason": "Abnormal combination of extreme payment latency, high discount exposure and Temporal Behavior"
+        }
+    },
+    {
+        "transaction_id": "TXN9",
+        "customer_id": "CUST191",
+        "project_id": "APEX",
+        "unit_id": "U-761",
+        "demand_amount": null,
+        "collected_amount": 195411613.0,
+        "outstanding_amount": 935482494.0,
+        "discount_amount": null,
+        "refund_amount": 54256480.0,
+        "payment_delay_days": null,
+        "demand_date": null,
+        "payment_date": null,
+        "engines_flagged": [
+            "Group-wise"
+        ],
+        "total_engines_flagged": 1,
+        "zscore_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "iqr_details": {
+            "flagged": false,
+            "reason": null
+        },
+        "groupwise_details": {
+            "flagged": true,
+            "anomalies": [
+                {
+                    "lens": "project_id",
+                    "case": "Demand Outlier Flag",
+                    "reason": "Demand (670,539,350) exceeds local fence (25,364,835)"
+                }
+            ]
+        },
+        "isolation_forest_details": {
+            "flagged": false,
+            "score": 0.0094,
+            "reason": null
+        }
+    }
+]

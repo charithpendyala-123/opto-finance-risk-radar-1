@@ -1,0 +1,226 @@
+[
+    {
+        "transaction_id": "TXN32",
+        "if_score": -0.0309,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of abnormal refund volume and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "TXN7",
+        "if_score": -0.0039,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_19",
+        "if_score": -0.0204,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of high discount exposure and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "TXN20",
+        "if_score": -0.0383,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_35",
+        "if_score": -0.0751,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of high discount exposure, abnormal invoice-to-payment window and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_40",
+        "if_score": -0.0495,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "TXN20",
+        "if_score": -0.107,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_47",
+        "if_score": -0.0317,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "TXN35",
+        "if_score": -0.0178,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "TXN34",
+        "if_score": -0.0921,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "TXN17",
+        "if_score": -0.0084,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_80",
+        "if_score": -0.0179,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "TXN29",
+        "if_score": -0.0601,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_84",
+        "if_score": -0.0204,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "TXN2",
+        "if_score": -0.0569,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_98",
+        "if_score": -0.0318,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_109",
+        "if_score": -0.0168,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "TXN45",
+        "if_score": -0.0668,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_120",
+        "if_score": -0.0,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of high discount exposure and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_121",
+        "if_score": -0.0312,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of extreme payment latency and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_133",
+        "if_score": -0.0744,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_135",
+        "if_score": -0.0769,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "TXN2",
+        "if_score": -0.0103,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_161",
+        "if_score": -0.1262,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of extreme payment latency and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "TXN43",
+        "if_score": -0.0509,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_170",
+        "if_score": -0.0148,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of high discount exposure and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_174",
+        "if_score": -0.0006,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "TXN38",
+        "if_score": -0.023,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of high discount exposure and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_179",
+        "if_score": -0.0334,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of financial and temporal behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_180",
+        "if_score": -0.0369,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of extreme payment latency and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_184",
+        "if_score": -0.002,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    },
+    {
+        "transaction_id": "SYS_MISSING_ROW_187",
+        "if_score": -0.1409,
+        "detected_by": "IF",
+        "reason": "Abnormal combination of extreme payment latency, high discount exposure and Temporal Behavior",
+        "anomaly_engine": "Isolation Forest"
+    }
+]

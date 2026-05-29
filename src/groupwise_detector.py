@@ -16,6 +16,8 @@ def detect_groupwise_anomalies(df):
     Executes in <0.2 seconds on large datasets by pre-calculating boundaries.
     """
     df_clean = df.copy()
+    # Save the original physical row number (index is 0-based, so + 2 is the CSV row number)
+    df_clean['original_row_num'] = df_clean.index + 2
     
     # ── 0. SAFELY CONVERT NUMERICS & DATES ──
     numeric_cols = ['demand_amount', 'collected_amount', 'outstanding_amount', 'discount_amount', 'refund_amount', 'payment_delay_days']
@@ -25,23 +27,33 @@ def detect_groupwise_anomalies(df):
     df_clean['demand_date_parsed'] = pd.to_datetime(df_clean['demand_date'], errors='coerce')
     df_clean['payment_date_parsed'] = pd.to_datetime(df_clean['payment_date'], errors='coerce')
 
-    # Registry to store flags by transaction_id
-    anomaly_registry = {row['transaction_id']: [] for _, row in df_clean.iterrows()}
+    # Registry to store flags dynamically
+    anomaly_registry = {}
     
     # ── 1. VECTORIZED GROUP SIZES FOR THE 5 LENSES (WITH NAMING SAFEGUARDS) ──
-    # Daily Lenses
-    df_clean['demand_date_size'] = df_clean.groupby('demand_date')['transaction_id'].transform('count')
-    df_clean['payment_date_size'] = df_clean.groupby('payment_date')['transaction_id'].transform('count')
+    # Daily Lenses (grouped by key and measured with transform('size') to count all rows regardless of null transaction_ids)
+    df_clean['demand_date_size'] = df_clean.groupby('demand_date')['demand_date'].transform('size').fillna(0)
+    df_clean['payment_date_size'] = df_clean.groupby('payment_date')['payment_date'].transform('size').fillna(0)
     
     # Entity Lenses
-    df_clean['project_id_size'] = df_clean.groupby('project_id')['transaction_id'].transform('count')
+    df_clean['project_id_size'] = df_clean.groupby('project_id')['project_id'].transform('size').fillna(0)
     df_clean['project_size'] = df_clean['project_id_size']
     
-    df_clean['customer_id_size'] = df_clean.groupby('customer_id')['transaction_id'].transform('count')
+    df_clean['customer_id_size'] = df_clean.groupby('customer_id')['customer_id'].transform('size').fillna(0)
     df_clean['customer_size'] = df_clean['customer_id_size']
     
-    df_clean['unit_id_size'] = df_clean.groupby('unit_id')['transaction_id'].transform('count')
+    df_clean['unit_id_size'] = df_clean.groupby('unit_id')['unit_id'].transform('size').fillna(0)
     df_clean['unit_size'] = df_clean['unit_id_size']
+
+    # ── 1b. OPTIMIZED VECTORIZED STATS FOR LOGICAL CASES (PREVENTS O(N^2) INNER-LOOP LOOPS) ──
+    # Case 10: Multi-Project Customer unique projects count
+    df_clean['customer_unique_projs'] = df_clean.groupby('customer_id')['project_id'].transform('nunique').fillna(0)
+    
+    # Case 11: Multi-Unit Customer booking unique units count per project
+    df_clean['customer_proj_unique_units'] = df_clean.groupby(['customer_id', 'project_id'])['unit_id'].transform('nunique').fillna(0)
+    
+    # Case 14: Date Compression Burst invoice count on same day per customer
+    df_clean['customer_demand_date_count'] = df_clean.groupby(['customer_id', 'demand_date'])['demand_date'].transform('size').fillna(0)
 
     # ── 2. PRE-CALCULATE LOCAL IQR BOUNDS (VECTORIZED) ──
     # Project & Customer Demand Bounds
@@ -68,8 +80,8 @@ def detect_groupwise_anomalies(df):
 
     # ── 3. PRE-CALCULATE SYSTEM & VOLUME STATS ──
     # Daily counts mapped back
-    demand_counts = df_clean.groupby('demand_date')['transaction_id'].count()
-    payment_counts = df_clean.groupby('payment_date')['transaction_id'].count()
+    demand_counts = df_clean.groupby('demand_date')['transaction_id'].size()
+    payment_counts = df_clean.groupby('payment_date')['transaction_id'].size()
     
     # Global daily IQR fences
     _, d_upper, _ = iqr(demand_counts)
@@ -85,11 +97,13 @@ def detect_groupwise_anomalies(df):
     # Pre-sort for sequential checks
     df_clean = df_clean.sort_values(by=['unit_id', 'customer_id', 'demand_date_parsed']).reset_index(drop=True)
 
+    # Pre-group by unit_id for high-speed rolling window lookup in Case 15
+    unit_groups = {uid: grp for uid, grp in df_clean.groupby('unit_id')}
+
     # ── 4. EXECUTE ALL 15 FORENSIC CHECKS INSTANTLY ──
-        # ── 4. EXECUTE ALL 15 FORENSIC CHECKS INSTANTLY ──
     for idx, row in df_clean.iterrows():
         # --- THE HOOPHOLE PATCH: Generate Virtual ID if blank ---
-        row_num = idx + 2  # Matches actual Excel/CSV row number (1-indexed + header)
+        row_num = int(row['original_row_num'])  # Matches actual Excel/CSV row number (1-indexed + header)
         raw_txn_id = row['transaction_id']
         
         if pd.isna(raw_txn_id) or str(raw_txn_id).strip() == "" or str(raw_txn_id).lower() == 'nan':
@@ -199,7 +213,7 @@ def detect_groupwise_anomalies(df):
 
         # CATEGORY 4: System & Allocation Outliers
         # Case 10: Multi-Project Customer
-        unique_projs = df_clean[df_clean['customer_id'] == cust_id]['project_id'].nunique()
+        unique_projs = int(row['customer_unique_projs'])
         if unique_projs > 1:
             anomaly_registry[txn_id].append({
                 "lens": "customer_id", "case": "High Credit / Speculation Exposure",
@@ -207,7 +221,7 @@ def detect_groupwise_anomalies(df):
             })
 
         # Case 11: Multi-Unit Customer
-        unique_units = df_clean[(df_clean['customer_id'] == cust_id) & (df_clean['project_id'] == proj_id)]['unit_id'].nunique()
+        unique_units = int(row['customer_proj_unique_units'])
         if unique_units > 2:
             anomaly_registry[txn_id].append({
                 "lens": "customer_id", "case": "High Default Risk",
@@ -227,14 +241,15 @@ def detect_groupwise_anomalies(df):
             })
 
         # Case 13: Project-Level Distribution Shift
-        if row['daily_proj_avg'] > (3 * row['proj_median_30d']):
+        # Case 13: Project-Level Distribution Shift
+        if row['daily_proj_avg'] > (3 * row['proj_median_30d']) and row['proj_median_30d'] > 0:
             anomaly_registry[txn_id].append({
                 "lens": "project_id", "case": "Project Distribution Shift Flag",
                 "reason": f"Daily project average demand ({row['daily_proj_avg']:,.0f}) shifted beyond 3x historical median ({row['proj_median_30d']:,.0f})."
             })
 
         # Case 14: Date Compression Burst
-        same_day_count = df_clean[(df_clean['customer_id'] == cust_id) & (df_clean['demand_date'] == row['demand_date'])]['transaction_id'].count()
+        same_day_count = int(row['customer_demand_date_count'])
         if same_day_count >= 4:
             anomaly_registry[txn_id].append({
                 "lens": "customer_id", "case": "Compressed Activity Burst Flag",
@@ -242,17 +257,18 @@ def detect_groupwise_anomalies(df):
             })
 
         # Case 15: Unit Recycling Pattern
-        unit_15d_rows = df_clean[
-            (df_clean['unit_id'] == unit_id) & 
-            (df_clean['demand_date_parsed'] >= row['demand_date_parsed'] - pd.Timedelta(days=15)) &
-            (df_clean['demand_date_parsed'] <= row['demand_date_parsed'])
-        ]
-        unique_owners = unit_15d_rows['customer_id'].nunique()
-        if unique_owners >= 3:
-            anomaly_registry[txn_id].append({
-                "lens": "unit_id", "case": "Rapid Unit Reassignment Flag",
-                "reason": f"Physical property unit reassigned across {unique_owners} unique customers in a 15-day window."
-            })
+        unit_grp = unit_groups.get(unit_id)
+        if unit_grp is not None:
+            unit_15d_rows = unit_grp[
+                (unit_grp['demand_date_parsed'] >= row['demand_date_parsed'] - pd.Timedelta(days=15)) &
+                (unit_grp['demand_date_parsed'] <= row['demand_date_parsed'])
+            ]
+            unique_owners = unit_15d_rows['customer_id'].nunique()
+            if unique_owners >= 3:
+                anomaly_registry[txn_id].append({
+                    "lens": "unit_id", "case": "Rapid Unit Reassignment Flag",
+                    "reason": f"Physical property unit reassigned across {unique_owners} unique customers in a 15-day window."
+                })
 
     return df_clean, anomaly_registry
 
@@ -265,7 +281,7 @@ if __name__ == "__main__":
         flagged_transactions = []
         for idx, row in df_analyzed.iterrows():
             # --- THE EXPORT HOOPHOLE PATCH: Generate Virtual ID if blank to match registry ---
-            row_num = idx + 2  # Matches actual Excel/CSV row number (1-indexed + header)
+            row_num = int(row['original_row_num'])  # Matches actual Excel/CSV row number (1-indexed + header)
             raw_txn_id = row['transaction_id']
             
             if pd.isna(raw_txn_id) or str(raw_txn_id).strip() == "" or str(raw_txn_id).lower() == 'nan':
