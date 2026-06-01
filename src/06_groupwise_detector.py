@@ -3,12 +3,16 @@ import os
 import pandas as pd
 import numpy as np
 import json
+import importlib
 
 # Dynamically add parent directory to search path for safe imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.csv_loader import load_finance_csv
-from src.iqr_anomalydetector import iqr
+csv_loader = importlib.import_module("src.02_csv_loader")
+load_finance_csv = csv_loader.load_finance_csv
+
+iqr_detector = importlib.import_module("src.05_iqr_anomalydetector")
+iqr = iqr_detector.iqr
 
 def detect_groupwise_anomalies(df):
     """

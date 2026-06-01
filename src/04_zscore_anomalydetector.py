@@ -2,11 +2,13 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import importlib
 
 # Now all your imports are perfectly safe!
 import pandas as pd
 import json
-from src.csv_loader import load_finance_csv
+csv_loader = importlib.import_module("src.02_csv_loader")
+load_finance_csv = csv_loader.load_finance_csv
 
 # Safe Z-score calculation for a single column/series
 def z_score(series):

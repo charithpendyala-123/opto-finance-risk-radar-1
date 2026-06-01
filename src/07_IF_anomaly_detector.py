@@ -3,12 +3,14 @@ import os
 import pandas as pd
 import numpy as np
 import json
+import importlib
 from sklearn.ensemble import IsolationForest
 
 # Dynamically add parent directory to search path for safe imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.csv_loader import load_finance_csv
+csv_loader = importlib.import_module("src.02_csv_loader")
+load_finance_csv = csv_loader.load_finance_csv
 
 def safe_txn_id(val, row_num):
     """

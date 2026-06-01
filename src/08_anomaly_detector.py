@@ -3,16 +3,29 @@ import os
 import pandas as pd
 import numpy as np
 import json
+import importlib
 from sklearn.ensemble import IsolationForest
 
 # Dynamically add parent directory to search path for safe imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.csv_loader import load_finance_csv
-from src.zscore_anomalydetector import z_score, get_anomaly_reason as get_zscore_reason
-from src.iqr_anomalydetector import iqr, get_anomaly_reason as get_iqr_reason
-from src.groupwise_detector import detect_groupwise_anomalies
-from src.IF_anomaly_detector import prepare_features, generate_if_reason, safe_txn_id
+csv_loader = importlib.import_module("src.02_csv_loader")
+load_finance_csv = csv_loader.load_finance_csv
+
+zscore_detector = importlib.import_module("src.04_zscore_anomalydetector")
+z_score = zscore_detector.z_score
+get_zscore_reason = zscore_detector.get_anomaly_reason
+
+iqr_detector = importlib.import_module("src.05_iqr_anomalydetector")
+iqr = iqr_detector.iqr
+get_iqr_reason = iqr_detector.get_anomaly_reason
+
+groupwise_detector = importlib.import_module("src.06_groupwise_detector")
+detect_groupwise_anomalies = groupwise_detector.detect_groupwise_anomalies
+
+if_detector = importlib.import_module("src.07_IF_anomaly_detector")
+prepare_features = if_detector.prepare_features
+generate_if_reason = if_detector.generate_if_reason
 
 # ── SANITIZATION HELPERS ──
 # Prevents unquoted float NaN, NaT, or Infinity leaks in JSON exports
@@ -25,7 +38,7 @@ def sanitize_float(val):
         if np.isnan(f_val) or np.isinf(f_val):
             return None
         return f_val
-    except:
+    except (ValueError, TypeError):
         return None
 
 def sanitize_int(val):
@@ -33,7 +46,7 @@ def sanitize_int(val):
         return None
     try:
         return int(float(val))
-    except:
+    except (ValueError, TypeError):
         return None
 
 def sanitize_str(val):
@@ -85,9 +98,15 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
     # 2. Perform Upstream Virtual ID Patching (Ensures exact primary keys in memory)
     df = patch_transaction_ids(df_raw)
 
+    # 3. Clean and convert numeric columns globally (Leaves NaNs intact for proper statistical math)
+    # This prevents duplicate conversion overhead and shields all sub-engines from dtype crashes!
+    numeric_cols = ['demand_amount', 'collected_amount', 'outstanding_amount', 'discount_amount', 'refund_amount', 'payment_delay_days']
+    for col in numeric_cols:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+
     print("\n[Engine Initialization] Running parallel anomaly audit sub-engines...")
 
-    # ── ENGINE 1: GLOBAL Z-SCORE SUB-ENGINE (Leaves NaNs intact for proper mean/std math) ──
+    # ── ENGINE 1: GLOBAL Z-SCORE SUB-ENGINE ──
     df['demand_amount_z_score'] = z_score(df['demand_amount'])
     df['collected_amount_z_score'] = z_score(df['collected_amount'])
     df['outstanding_amount_z_score'] = z_score(df['outstanding_amount'])
@@ -95,11 +114,7 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
     df['refund_amount_z_score'] = z_score(df['refund_amount'])
     df['payment_delay_days_z_score'] = z_score(df['payment_delay_days'])
 
-    # ── ENGINE 2: ROBUST IQR SUB-ENGINE (Leaves NaNs intact for proper Tukey bounds quantiles) ──
-    numeric_cols = ['demand_amount', 'collected_amount', 'outstanding_amount', 'discount_amount', 'refund_amount', 'payment_delay_days']
-    for col in numeric_cols:
-        df[col] = pd.to_numeric(df[col], errors='coerce')  # Convert, but DO NOT fillna(0) here!
-        
+    # ── ENGINE 2: ROBUST IQR SUB-ENGINE ──
     for col in numeric_cols:
         lower, upper, true_iqr = iqr(df[col])
         df[f'{col}_lower_bound'] = lower
@@ -107,7 +122,8 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
         df[f'{col}_iqr'] = true_iqr
 
     # ── ENGINE 3: CONTEXTUAL GROUP-WISE SUB-ENGINE ──
-    df_groupwise, groupwise_registry = detect_groupwise_anomalies(df)
+    # Unpack using standard throwaway '_' to keep code clean and maintain CSV row order in main df
+    _, groupwise_registry = detect_groupwise_anomalies(df)
 
     # ── ENGINE 4: UNSUPERVISED ISOLATION FOREST ML ENGINE ──
     df_engineered = prepare_features(df)
@@ -122,9 +138,15 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
         "demand_dayofweek",
         "payment_dayofweek"
     ]
+    
+    # Defensive programming check: fail-fast if any engineered features are missing
+    missing_feats = [c for c in features if c not in df_engineered.columns]
+    if missing_feats:
+        raise ValueError(f"Missing expected engineered machine learning features: {missing_feats}")
+        
     X = df_engineered[features].fillna(0)
     
-    # Calculate Isolation Forest estimators dynamically based on dataset volume
+    # Calculate Isolation Forest estimators dynamically (restored to stable max(50, ...) baseline)
     n_est = int(min(200, max(50, len(df) // 10)))
     model = IsolationForest(
         n_estimators=n_est,
@@ -199,7 +221,7 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
         
         if txn_id in engineered_map.index:
             eng_row = engineered_map.loc[txn_id]
-            # Handle duplicate index edge case safely
+            # Handle duplicate index edge case silently (already validated by Rule Engine)
             if isinstance(eng_row, pd.DataFrame):
                 eng_row = eng_row.iloc[0]
             if_flagged = eng_row['if_prediction'] == -1

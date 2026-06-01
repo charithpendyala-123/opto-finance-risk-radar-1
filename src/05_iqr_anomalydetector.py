@@ -7,7 +7,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 import numpy as np
 import json
-from src.csv_loader import load_finance_csv
+import importlib
+csv_loader = importlib.import_module("src.02_csv_loader")
+load_finance_csv = csv_loader.load_finance_csv
 
 # Fixed to return the TRUE IQR directly!
 def iqr(series):

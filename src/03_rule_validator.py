@@ -3,11 +3,13 @@ import numpy as np
 from datetime import datetime, date
 import sys
 import os
+import importlib
 
 # Dynamically add the parent directory to the search path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.csv_loader import load_finance_csv
+csv_loader = importlib.import_module("src.02_csv_loader")
+load_finance_csv = csv_loader.load_finance_csv
 
 
 # ─────────────────────────────────────────────────────────────────────────────
