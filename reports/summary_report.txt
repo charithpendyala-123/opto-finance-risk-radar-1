@@ -1,0 +1,53 @@
+┌──────────────────────────────────────────────────────────────────────────────┐
+│             OPTOxCRM FINANCE RISK RADAR - EXECUTIVE AUDIT REPORT             │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  1. DATASET OVERVIEW & CLASS BREAKDOWN                                       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Total Transactions Scored : 64          Risk Exposure : 100.0%              │
+│  Total Flagged Anomalies   : 64          Critical Risk : 62                  │
+│  High Severity Risks       : 2           Medium Risks  : 0                   │
+│  Low Severity/Safe Entries : 0                                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  2. FINANCIAL VALUE AT RISK (EXPOSURE)                                       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Total Demand Value at Risk (Critical + High)  : ₹988.26 Cr                  │
+│  Flagged Outstanding Account Exposure          : ₹1865.85 Cr                 │
+│  Flagged Outflow/Refund Exposure               : ₹1450.69 Cr                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  3. SUB-ENGINE DETECTION PERFORMANCE STATS                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Rule Violations (Hard Rules)  : 64  │ Z-Score Flags                  : 4    │
+│  IQR Flags (Statistical Out)   : 10  │ Isolation Forest (ML Outlier)  : 11   │
+│  Groupwise Systemic Outliers   : 55  │                                       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  4. SUSPECTED FRAUD PATTERNS & DYNAMIC CFO RECOMMENDATIONS                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  [Fraud Patterns Detected]           │ [CFO Action Mitigation Groups]        │
+│  - High Credit / Speculati: 52       │  * Immediate Ledger Freeze: 33        │
+│  - Bulk System Glitch: 17            │  * High Priority Forensic Audit: 1    │
+│  - High Policy Outlier: Ki: 12       │  * Senior Forensic Compliance R: 28   │
+│  - High Default Risk: 8              │  * AML Review: 2                      │
+│  - Project Distribution Sh: 6        │                                       │
+│  - Critical Fraud: Phantom: 6        │                                       │
+│  - Billing Escalation: 6             │                                       │
+│  - Laundering Cash: 6                │                                       │
+│  - Demand Outlier: 5                 │                                       │
+│  - Critical Fraud: Ghost C: 4        │                                       │
+│  - Collection Outlier: 3             │                                       │
+│  - Phantom Billing: 1                │                                       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  5. HIGH PRIORITY AUDIT Remediation QUEUE (TOP 10)                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Rank │ Transaction ID      │ Risk Score │ Severity │ CFO Forensic Action       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  #1   │ TXN65               │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #2   │ TXN5                │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #3   │ TXN44               │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #4   │ SYS_MISSING_ROW_60  │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #5   │ TXN6                │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #6   │ TXN22               │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #7   │ TXN48               │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #8   │ TXN30               │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #9   │ TXN1                │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #10  │ SYS_MISSING_ROW_22  │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+└──────────────────────────────────────────────────────────────────────────────┘

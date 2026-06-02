@@ -1,0 +1,114 @@
+{
+    "executive_summary": {
+        "total_audited": 64,
+        "total_flagged": 64,
+        "exposure_pct": 100.0,
+        "breakdown": {
+            "CRITICAL": 62,
+            "HIGH": 2,
+            "MEDIUM": 0,
+            "LOW": 0
+        }
+    },
+    "engine_performance": {
+        "rule_violations": 64,
+        "zscore_flags": 4,
+        "iqr_flags": 10,
+        "groupwise_flags": 55,
+        "isolation_forest_flags": 11
+    },
+    "financial_exposure": {
+        "raw": {
+            "demand_exposure": 9882589882.0,
+            "outstanding_exposure": 18658481094.0,
+            "refund_exposure": 14506872484.0
+        },
+        "formatted": {
+            "demand_exposure": "\u20b9988.26 Cr",
+            "outstanding_exposure": "\u20b91865.85 Cr",
+            "refund_exposure": "\u20b91450.69 Cr"
+        }
+    },
+    "fraud_patterns": {
+        "High Credit / Speculation Exposure": 52,
+        "Bulk System Glitch": 17,
+        "High Policy Outlier: Kickback Discount": 12,
+        "High Default Risk": 8,
+        "Project Distribution Shift": 6,
+        "Critical Fraud: Phantom Settlement": 6,
+        "Billing Escalation": 6,
+        "Laundering Cash": 6,
+        "Demand Outlier": 5,
+        "Critical Fraud: Ghost Collection": 4,
+        "Collection Outlier": 3,
+        "Phantom Billing": 1
+    },
+    "grouped_recommendations": {
+        "Immediate Ledger Freeze Required": 33,
+        "High Priority Forensic Audit": 1,
+        "Senior Forensic Compliance Review": 28,
+        "AML Review Required": 2
+    },
+    "top_10_high_priority": [
+        {
+            "transaction_id": "TXN65",
+            "risk_score": 100,
+            "severity": "CRITICAL",
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-15] - Refund exceeds demand. Halt payment. Verify physical sales contract pricing terms.; [RV-16] - Discount exceeds demand. Halt transaction. Review unapproved manager promotion clearances.; [RV-18] - Evasion Warning. Aggregate discounts and refunds exceed demand value. Freeze client ledger."
+        },
+        {
+            "transaction_id": "TXN5",
+            "risk_score": 100,
+            "severity": "CRITICAL",
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-15] - Refund exceeds demand. Halt payment. Verify physical sales contract pricing terms.; [RV-16] - Discount exceeds demand. Halt transaction. Review unapproved manager promotion clearances.; [RV-18] - Evasion Warning. Aggregate discounts and refunds exceed demand value. Freeze client ledger.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
+        },
+        {
+            "transaction_id": "TXN44",
+            "risk_score": 100,
+            "severity": "CRITICAL",
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-02] - Duplicate ID threat. Reconcile unit ledger balances and check for duplicate billing vouchers.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-15] - Refund exceeds demand. Halt payment. Verify physical sales contract pricing terms.; [RV-35] - Multiple demand amounts logged on identical transaction ID. Reconcile invoices immediately.; [SOP-GW-BURST] - Reconcile automated invoicing triggers. Check sequential timestamps for billing loop glitches."
+        },
+        {
+            "transaction_id": "SYS_MISSING_ROW_60",
+            "risk_score": 100,
+            "severity": "CRITICAL",
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-24] - Temporal Anomaly. Payment logged prior to demand date. Verify CRM logging latency.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [SOP-GW-GHOST] - Audit Alert: Reconcile collected amount; check if funds are unallocated or misapplied to incorrect invoices.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        },
+        {
+            "transaction_id": "TXN6",
+            "risk_score": 100,
+            "severity": "CRITICAL",
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-02] - Duplicate ID threat. Reconcile unit ledger balances and check for duplicate billing vouchers.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-15] - Refund exceeds demand. Halt payment. Verify physical sales contract pricing terms.; [RV-16] - Discount exceeds demand. Halt transaction. Review unapproved manager promotion clearances.; [RV-18] - Evasion Warning. Aggregate discounts and refunds exceed demand value. Freeze client ledger.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [RV-31] - Verify holiday/weekend billing authorization. Ensure invoice generation complies with bank operating hours.; [RV-35] - Multiple demand amounts logged on identical transaction ID. Reconcile invoices immediately.; [SOP-GW-AML] - Reconcile source of funds. Reconcile check deposit receipts, verify customer KYC profiles, and file anti-money laundering (AML) regulatory review.; [SOP-GW-BURST] - Reconcile automated invoicing triggers. Check sequential timestamps for billing loop glitches."
+        },
+        {
+            "transaction_id": "TXN22",
+            "risk_score": 100,
+            "severity": "CRITICAL",
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-24] - Temporal Anomaly. Payment logged prior to demand date. Verify CRM logging latency.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [SOP-IQR-OUTLIER] - Statistical IQR Bounds Outlier: payment_delay_days (IQR=17.00); [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+        },
+        {
+            "transaction_id": "TXN48",
+            "risk_score": 100,
+            "severity": "CRITICAL",
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-16] - Discount exceeds demand. Halt transaction. Review unapproved manager promotion clearances.; [RV-18] - Evasion Warning. Aggregate discounts and refunds exceed demand value. Freeze client ledger.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [SOP-GW-GHOST] - Audit Alert: Reconcile collected amount; check if funds are unallocated or misapplied to incorrect invoices.; [SOP-GW-BURST] - Reconcile automated invoicing triggers. Check sequential timestamps for billing loop glitches.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of high discount exposure and Temporal Behavior"
+        },
+        {
+            "transaction_id": "TXN30",
+            "risk_score": 100,
+            "severity": "CRITICAL",
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-02] - Duplicate ID threat. Reconcile unit ledger balances and check for duplicate billing vouchers.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-24] - Temporal Anomaly. Payment logged prior to demand date. Verify CRM logging latency.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [RV-35] - Multiple demand amounts logged on identical transaction ID. Reconcile invoices immediately.; [SOP-GW-AML] - Reconcile source of funds. Reconcile check deposit receipts, verify customer KYC profiles, and file anti-money laundering (AML) regulatory review.; [SOP-GW-ESCALATION] - Inspect billing escalation patterns. Check Rate Card deviations and demand schedules."
+        },
+        {
+            "transaction_id": "TXN1",
+            "risk_score": 100,
+            "severity": "CRITICAL",
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-02] - Duplicate ID threat. Reconcile unit ledger balances and check for duplicate billing vouchers.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [SOP-GW-GHOST] - Audit Alert: Reconcile collected amount; check if funds are unallocated or misapplied to incorrect invoices.; [SOP-GW-BURST] - Reconcile automated invoicing triggers. Check sequential timestamps for billing loop glitches."
+        },
+        {
+            "transaction_id": "SYS_MISSING_ROW_22",
+            "risk_score": 100,
+            "severity": "CRITICAL",
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-15] - Refund exceeds demand. Halt payment. Verify physical sales contract pricing terms.; [RV-18] - Evasion Warning. Aggregate discounts and refunds exceed demand value. Freeze client ledger."
+        }
+    ]
+}
