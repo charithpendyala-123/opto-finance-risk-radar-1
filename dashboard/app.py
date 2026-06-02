@@ -1,0 +1,589 @@
+# ==============================================================================
+# OPTOxCRM FINANCE RISK RADAR - STAKEHOLDER PORTAL & FORENSIC DASHBOARD
+# ==============================================================================
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+import json
+import os
+import io
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PAGE STYLING & PREMIUM MATTE-CARBON DIRECTIVE
+# ─────────────────────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="OPTOxCRM Finance Risk Radar",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Inject modern CSS style parameters for slate/carbon theme & glassmorphic metrics
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&family=Outfit:wght=400;500;600;700&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+    color: #E2E8F0;
+}
+
+/* Completely hide the sidebar expand/collapse control arrow */
+[data-testid="collapsedControl"] {
+    display: none !important;
+}
+.main-title {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    background: linear-gradient(135deg, #F8FAFC 30%, #94A3B8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 2px;
+}
+
+/* Glassmorphic Metric Cards */
+            
+.metric-card {
+    background: rgba(30, 41, 59, 0.45);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s, border-color 0.2s;
+}
+.metric-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+.metric-title {
+    color: #94A3B8;
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
+.metric-value {
+    color: #F8FAFC;
+    font-size: 21px;          /* Adjusted from 28px to fit perfectly inside 6-column layouts */
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    white-space: nowrap;      /* Guarantees currency symbols and Cr never wrap vertically */
+}
+.metric-sub {
+    font-size: 11px;
+    margin-top: 6px;
+}
+
+/* Severity Indicator Dots */
+.dot {
+    height: 8px;
+    width: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+.dot-critical { background-color: #EF4444; box-shadow: 0 0 8px #EF4444; }
+.dot-high { background-color: #F97316; box-shadow: 0 0 8px #F97316; }
+.dot-medium { background-color: #EAB308; box-shadow: 0 0 8px #EAB308; }
+.dot-low { background-color: #10B981; box-shadow: 0 0 8px #10B981; }
+
+/* CFO Forensic Sheet Container */
+.forensic-sheet {
+    background: #0B0F19;
+    border: 1px solid #1E293B;
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 15px;
+}
+
+/* Styled Download Buttons */
+.stDownloadButton > button {
+    background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    font-weight: 600 !important;
+    width: 100%;
+}
+.stDownloadButton > button:hover {
+    background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%) !important;
+    opacity: 0.95;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DATABASE LOADERS & WORKSPACE PORTABILITY
+# ─────────────────────────────────────────────────────────────────────────────
+REPORTS_DIR = r"C:\Projects\OPTOxCRM Finance Risk Radar\reports"
+# Portability check: dynamic local fallback if absolute path does not exist
+if not os.path.exists(REPORTS_DIR):
+    REPORTS_DIR = os.path.join(os.getcwd(), "reports")
+
+def load_local_reports():
+    """Reads execution engine output JSONs from reports folder if available."""
+    exec_summary = None
+    risk_list = []
+    
+    summary_path = os.path.join(REPORTS_DIR, "executive_summary.json")
+    report_path = os.path.join(REPORTS_DIR, "risk_report.json")
+    
+    if os.path.exists(summary_path):
+        try:
+            with open(summary_path, 'r', encoding='utf-8') as f:
+                exec_summary = json.load(f)
+        except Exception:
+            pass
+            
+    if os.path.exists(report_path):
+        try:
+            with open(report_path, 'r', encoding='utf-8') as f:
+                risk_list = json.load(f)
+        except Exception:
+            pass
+            
+    return exec_summary, risk_list
+
+# Load live production dataset
+real_summary, real_report = load_local_reports()
+
+if real_summary is None or real_report is None:
+    # Double-safe initialization when folders are empty
+    real_summary = {}
+    real_report = []
+
+
+# Parse live ledger values from executive summary
+exec_data = (real_summary or {}).get("executive_summary") or {}
+total_audited = exec_data.get("total_audited", 0)
+total_flagged = exec_data.get("total_flagged", 0)
+exposure_pct = exec_data.get("exposure_pct", 0.0)
+
+breakdown = exec_data.get("breakdown") or {}
+crit_count = breakdown.get("CRITICAL", 0)
+high_count = breakdown.get("HIGH", 0)
+med_count = breakdown.get("MEDIUM", 0)
+low_count = breakdown.get("LOW", 0)
+
+fraud_distribution = (real_summary or {}).get("fraud_patterns") or {}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HEADER PANEL
+# ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# HEADER PANEL
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown("""
+<h1 class='main-title' style='user-select: text;'>
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="
+        vertical-align: middle; 
+        margin-right: 12px; 
+        filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.65));
+        user-select: none;
+        pointer-events: none;
+    ">
+        <defs>
+            <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#60A5FA"/>
+                <stop offset="100%" stop-color="#1D4ED8"/>
+            </linearGradient>
+            <linearGradient id="borderGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#F8FAFC"/>
+                <stop offset="100%" stop-color="#94A3B8"/>
+            </linearGradient>
+        </defs>
+        <path d="M12 2L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 2Z" fill="url(#shieldGrad)" stroke="url(#borderGrad)" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M12 3.5V21.3C16.2 20.1 19 16.2 19 11V6.2L12 3.5Z" fill="#93C5FD" opacity="0.3"/>
+    </svg>OPTOxCRM Finance Risk Radar
+</h1>
+""", unsafe_allow_html=True)
+st.caption("Portal View: Live Production Audit Logs · Running locally under secure sandboxed port localhost:8501")
+st.markdown("<br>", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CARD ROW: EXECUTIVE SUMMARY METRICS (DYNAMIC 6-COLUMN GRID)
+# ─────────────────────────────────────────────────────────────────────────────
+m1, m2, m3, m4, m5, m6 = st.columns(6)
+
+with m1:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-title">📊 Total Audited</div>
+        <div class="metric-value">{total_audited:,}</div>
+        <div class="metric-sub" style="color: #64748B;">Total voucher receipts parsed</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with m2:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-title">🚨 Flagged Transactions</div>
+        <div class="metric-value" style="color: #F87171;">{total_flagged:,}</div>
+        <div class="metric-sub" style="color: #EF4444;">⚠️ Requiring forensic evaluation</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with m3:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-title">🔥 Exposure %</div>
+        <div class="metric-value" style="color: #FB923C;">{exposure_pct:.2f}%</div>
+        <div class="metric-sub" style="color: #F97316;">Voucher-to-Ledger deviation index</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Fetch financial exposure values dynamically from output summary
+financial_exp = (real_summary or {}).get("financial_exposure") or {}
+formatted_exp = financial_exp.get("formatted") or {}
+
+val_outstanding = formatted_exp.get("outstanding_exposure") or "₹0.00 Cr"
+val_demand = formatted_exp.get("demand_exposure") or "₹0.00 Cr"
+val_refund = formatted_exp.get("refund_exposure") or "₹0.00 Cr"
+
+with m4:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-title">💼 Outstanding Risk</div>
+        <div class="metric-value" style="color: #FBBF24;">{val_outstanding}</div>
+        <div class="metric-sub" style="color: #EAB308;">Total outstanding value at risk</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with m5:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-title">📈 Demand Risk</div>
+        <div class="metric-value" style="color: #60A5FA;">{val_demand}</div>
+        <div class="metric-sub" style="color: #3B82F6;">Total demand value at risk</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with m6:
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-title">💸 Refund Risk</div>
+        <div class="metric-value" style="color: #F472B6;">{val_refund}</div>
+        <div class="metric-sub" style="color: #EC4899;">Total outflow refund exposure</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VISUAL INSIGHTS PANEL (RISK BREAKDOWN + DISTRIBUTION)
+# ─────────────────────────────────────────────────────────────────────────────
+c1, c2 = st.columns([2, 3], gap="large")
+
+with c1:
+    st.markdown("### 🍩 Severity Classification")
+    
+    # 1. Case-insensitive key lookup to fix the casing bug
+    breakdown_lower = {k.lower(): v for k, v in breakdown.items()}
+    crit_count = breakdown_lower.get("critical", 0)
+    high_count = breakdown_lower.get("high", 0)
+    med_count = breakdown_lower.get("medium", 0)
+    low_count = breakdown_lower.get("low", 0)
+    
+    raw_values = [crit_count, high_count, med_count, low_count]
+    total_count = sum(raw_values) or 1
+    
+    # 2. Build the mathematically exact percentage strings for display
+    percent_texts = [
+        f"{crit_count / total_count * 100:.1f}%",
+        f"{high_count / total_count * 100:.2f}%",
+        f"{med_count / total_count * 100:.3f}%",
+        f"{low_count / total_count * 100:.3f}%"
+    ]
+    
+    # 3. Only pad slices if they have a non-zero count. If count is 0, keep it 0!
+    render_values = [
+        crit_count,
+        high_count,
+        max(med_count, 12) if med_count > 0 else 0,
+        max(low_count, 8) if low_count > 0 else 0
+    ]
+    
+    labels = ["Critical", "High", "Medium", "Low"]
+    colors = ["#EF4444", "#F97316", "#EAB308", "#10B981"]
+    
+    # 4. Build custom hover text using actual, unpadded transaction counts
+    hover_texts = [
+        f"<b>{label}</b><br>Incident Cases: {val}<br>Percentage: {pct}"
+        for label, val, pct in zip(labels, raw_values, percent_texts)
+    ]
+    
+    fig_donut = go.Figure(data=[go.Pie(
+        labels=labels, 
+        values=render_values,     # Padded strictly for visual rendering
+        hole=.5,
+        marker=dict(colors=colors, line=dict(color='#0F172A', width=2)),
+        textinfo='text',        
+        text=percent_texts,       # Exact mathematical percentages printed outside
+        textposition='outside', 
+        rotation=110,           
+        hovertext=hover_texts,    # Strictly shows actual, unpadded database counts on hover!
+        hoverinfo='text'          # Overrides default hover with our custom texts
+    )])
+    
+    fig_donut.update_traces(
+        automargin=True,
+        pull=[0, 0, 0, 0.12]
+    )
+
+    fig_donut.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        showlegend=True,
+        legend=dict(
+            font=dict(color="#94A3B8"),
+            orientation="h",
+            yanchor="bottom",
+            y=-0.25,
+            xanchor="center",
+            x=0.5
+        ),
+        margin=dict(t=40, b=80, l=80, r=80), 
+        height=340,
+        uniformtext=dict(mode="show", minsize=9)
+    )
+    
+    st.plotly_chart(fig_donut, use_container_width=True, config={'displayModeBar': False})
+    
+
+
+with c2:
+    st.markdown("### 📈 Fraud Pattern Frequency")
+    
+    patterns = list(fraud_distribution.keys())
+    counts = list(fraud_distribution.values())
+    
+    df_bar = pd.DataFrame({"Pattern": patterns, "Cases Flagged": counts})
+    df_bar = df_bar.sort_values(by="Cases Flagged", ascending=True)
+    
+    fig_bar = px.bar(
+        df_bar,
+        x="Cases Flagged",
+        y="Pattern",
+        orientation="h",
+        color="Cases Flagged",
+        color_continuous_scale=["#EAB308", "#F97316", "#EF4444"],
+        text_auto=True
+    )
+    
+    fig_bar.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font_color="#94A3B8",
+        xaxis=dict(showgrid=False, title="Voucher Incidents Count"),
+        yaxis=dict(title=None),
+        coloraxis_showscale=False,
+        margin=dict(t=10, b=10, l=10, r=10),
+        height=320
+    )
+    
+    st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
+
+st.markdown("---")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CFO PRIORITY AUDIT REMEDIATION QUEUE (TOP 10 LIVE QUEUE)
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown("### 📋 CFO Audit Remediation Queue (Top 10 High Priority)")
+
+real_queue = (real_summary or {}).get("top_10_high_priority") or []
+records = []
+for item in real_queue:
+    records.append({
+        "TXN ID": item.get("transaction_id", ""),
+        "Risk Score": item.get("risk_score", 100),
+        "Severity": item.get("severity", "CRITICAL"),
+        "Recommendation": (item.get("recommended_action") or "").split("; ")[0]
+    })
+if not records:
+    for idx, item in enumerate((real_report or [])[:10]):
+        records.append({
+            "TXN ID": item.get("transaction_id", f"TXN{idx}"),
+            "Risk Score": item.get("risk_score", 90),
+            "Severity": item.get("risk_severity", "CRITICAL"),
+            "Recommendation": (item.get("recommended_action") or "").split("; ")[0]
+        })
+top_10_queue = pd.DataFrame(records)
+
+# Render standard clean tabular spreadsheet datagrid layout
+st.dataframe(
+    top_10_queue,
+    use_container_width=True,
+    hide_index=True,
+    column_config={
+        "TXN ID": st.column_config.TextColumn("Transaction ID", width="small"),
+        "Risk Score": st.column_config.ProgressColumn("Risk Score", min_value=0, max_value=100, format="%d"),
+        "Severity": st.column_config.TextColumn("Severity Status", width="small"),
+        "Recommendation": st.column_config.TextColumn("Auditor Action Directives", width="large")
+    }
+)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FORENSIC TRANSACTION SEARCH PANEL (100% PRODUCTION-ONLY)
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown("### 🔍 Forensic Ledger Explorer")
+search_id = st.text_input("Search Transaction ID:", value="TXN313", placeholder="e.g. TXN313, TXN773, TXN607...").strip()
+
+if search_id:
+    # Search strictly in the active live database list
+    matched_tx = [t for t in (real_report or []) if (t.get("transaction_id") or "").upper() == search_id.upper()]
+    
+    if matched_tx:
+        tx = matched_tx[0]
+        severity = tx.get("risk_severity", "HIGH")
+        dot_class = "dot-critical" if severity == "CRITICAL" else "dot-high" if severity == "HIGH" else "dot-medium"
+        color = "#EF4444" if severity == "CRITICAL" else "#F97316" if severity == "HIGH" else "#EAB308"
+        icon = "🚨" if severity in ["CRITICAL", "HIGH"] else "🔍"
+        
+        v_list = [f"[{v.get('rule_id')}] - {v.get('description')}" for v in (tx.get("violations") or []) if v]
+        v_str = " · ".join(v_list) if v_list else "None (No hard-rule violations)"
+        
+        anom_details = tx.get("anomaly_details") or {}
+        anom_list = []
+        if anom_details.get("zscore_flagged"): anom_list.append(f"Z-Score ({anom_details.get('zscore_reason')})")
+        if anom_details.get("iqr_flagged"): anom_list.append(f"IQR Outlier ({anom_details.get('iqr_reason')})")
+        if anom_details.get("groupwise_flagged"):
+            reasons = [g.get('case') for g in (anom_details.get('groupwise_anomalies') or []) if g]
+            anom_list.append(f"Groupwise ({', '.join(reasons)})")
+        if anom_details.get("isolation_forest_flagged"): anom_list.append("Isolation Forest (ML)")
+        
+        anom_str = " · ".join(anom_list) if anom_list else "None (No statistical outliers)"
+        
+        # Dynamic suspected fraud patterns extraction based on flagged indicators
+        patterns_list = []
+        groupwise_list = anom_details.get("groupwise_anomalies") or []
+        for g in groupwise_list:
+            case_name = g.get("case")
+            if case_name:
+                clean_name = case_name.replace(" Flag", "").replace(" Outlier", "").strip()
+                if clean_name not in patterns_list:
+                    patterns_list.append(clean_name)
+        
+        for v in (tx.get("violations") or []):
+            desc = v.get("description") or ""
+            rule_id = v.get("rule_id") or ""
+            if "refund" in desc.lower() or "over-collection" in desc.lower() or rule_id in ["RV-14", "RV-15"]:
+                if "Outflow / Refund Exposure" not in patterns_list:
+                    patterns_list.append("Outflow / Refund Exposure")
+            elif "duplicate" in desc.lower() or rule_id in ["RV-02", "RV-34", "RV-35"]:
+                if "Duplicate Ledger Posting" not in patterns_list:
+                    patterns_list.append("Duplicate Ledger Posting")
+            elif "gap" in desc.lower() or rule_id == "RV-08":
+                if "Sequential Gap Outlier" not in patterns_list:
+                    patterns_list.append("Sequential Gap Outlier")
+            elif "missing" in desc.lower() or "blank" in desc.lower() or rule_id in ["RV-01", "RV-03", "RV-04", "RV-05"]:
+                if "Missing Identity Anchor" not in patterns_list:
+                    patterns_list.append("Missing Identity Anchor")
+        
+        if anom_details.get("isolation_forest_flagged"):
+            if "Isolation Forest (ML Outlier)" not in patterns_list:
+                patterns_list.append("Isolation Forest (ML Outlier)")
+        if anom_details.get("zscore_flagged"):
+            if "Statistical Z-Score Outlier" not in patterns_list:
+                patterns_list.append("Statistical Z-Score Outlier")
+        if anom_details.get("iqr_flagged"):
+            if "IQR Deviation Outlier" not in patterns_list:
+                patterns_list.append("IQR Deviation Outlier")
+        
+        if not patterns_list:
+            patterns_list.append("Standard Policy Outlier")
+            
+        patterns_html = "".join([f"<li><strong>{p}:</strong> Flagged transaction anomaly</li>" for p in patterns_list])
+        
+        # Display detailed 5-row table with the separate analysis block printed below it
+        st.markdown(f"""
+        <div class="forensic-sheet">
+            <h4 style="color:#F8FAFC; margin-bottom:12px; font-family:'Outfit';">{icon} Forensic Profile Sheet: {tx.get('transaction_id') or 'N/A'} (Production Ledger)</h4>
+            <table style="width:100%; border-collapse:collapse; color:#E2E8F0; font-size:13px; font-family:sans-serif;">
+                <tr style="border-bottom: 1px solid #1E293B; height:32px;">
+                    <td style="color:#94A3B8; font-weight:600; width:25%;">Customer ID Reference</td>
+                    <td><strong>{tx.get('customer_id') or 'N/A (Missing)'}</strong></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #1E293B; height:32px;">
+                    <td style="color:#94A3B8; font-weight:600;">Risk Severity Score</td>
+                    <td><span class="dot {dot_class}"></span><strong style="color:{color};">{tx.get('risk_score') or 0} / 100 ({severity})</strong></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #1E293B; height:32px;">
+                    <td style="color:#94A3B8; font-weight:600;">Sub-engine Hard Violations</td>
+                    <td style="color:#F87171;">{v_str}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #1E293B; height:32px;">
+                    <td style="color:#94A3B8; font-weight:600;">Ledger Outliers</td>
+                    <td style="color:#FCD34D;">{anom_str}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #1E293B; height:32px;">
+                    <td style="color:#94A3B8; font-weight:600;">Action Directive</td>
+                    <td><em>{tx.get('recommended_action') or 'No recommendation registered'}</em></td>
+                </tr>
+            </table>
+            <br>
+            <h5 style="color:#F8FAFC; margin-bottom:8px; font-family:'Outfit';">📊 Suspected Fraud Pattern Analysis:</h5>
+            <ul>
+                {patterns_html}
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.warning(f"⚠️ Transaction ID '{search_id}' not found in active Production Audit logs. Try searching for an active transaction like 'TXN313' or 'TXN773'.")
+
+st.markdown("---")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EXPORT CENTER (PRODUCTION DOWNLOADS ONLY)
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown("### 💾 Stakeholder Export Center")
+st.caption("Instantly output audited reports in corporate-ready CSV, JSON, or text summary sheets.")
+st.markdown("<br>", unsafe_allow_html=True)
+
+e1, e2, e3 = st.columns(3)
+
+with e1:
+    json_bytes = json.dumps(real_summary, indent=4).encode('utf-8')
+    st.download_button(
+        label="📥 Download JSON Report (.json)",
+        data=json_bytes,
+        file_name="risk_report.json",
+        mime="application/json"
+    )
+
+with e2:
+    csv_df = pd.DataFrame(real_report or [])
+    csv_buffer = io.StringIO()
+    csv_df.to_csv(csv_buffer, index=False)
+    csv_bytes = csv_buffer.getvalue().encode('utf-8')
+    
+    st.download_button(
+        label="📥 Download CSV Ledger (.csv)",
+        data=csv_bytes,
+        file_name="risk_report.csv",
+        mime="text/csv"
+    )
+
+with e3:
+    txt_path = os.path.join(REPORTS_DIR, "summary_report.txt")
+    if os.path.exists(txt_path):
+        with open(txt_path, 'r', encoding='utf-8') as f:
+            summary_txt = f.read()
+    else:
+        summary_txt = f"OPTOxCRM Finance Risk Report\nTotal Audited: {total_audited}\nTotal Flagged: {total_flagged}"
+        
+    st.download_button(
+        label="📥 Download Executive Summary (.txt)",
+        data=summary_txt.encode('utf-8'),
+        file_name="summary_report.txt",
+        mime="text/plain"
+    )
+
+st.markdown("<br><br>", unsafe_allow_html=True)
+st.caption("OPTOxCRM Compliance Operations. Generated automatically on secure transaction schedules.")
