@@ -67,3 +67,30 @@ def get_all_feedback(conn):
     except Exception as e:
         print(f"[Database Repo Error] Failed to fetch all feedback entries: {e}")
     return []
+def initialize_feedback(conn, transaction_ids):
+    """
+    Pre-populates the auditor_feedback table with True (Fraud) for a list of transaction IDs.
+    Updates existing records to True if they are already present.
+    """
+    if conn is None or not transaction_ids:
+        return False
+
+    query = """
+        INSERT INTO auditor_feedback (transaction_id, fraud_label, auditor_comments, reviewed_at)
+        VALUES (%s, TRUE, 'System initialized as fraud', CURRENT_TIMESTAMP)
+        ON CONFLICT (transaction_id) DO UPDATE SET
+            fraud_label = EXCLUDED.fraud_label,
+            auditor_comments = EXCLUDED.auditor_comments,
+            reviewed_at = CURRENT_TIMESTAMP;
+    """
+
+    try:
+        with conn.cursor() as cur:
+            unique_ids = list(set(transaction_ids))
+            cur.executemany(query, [(tid,) for tid in unique_ids])
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"[Database Repo Error] Failed to initialize feedback records: {e}")
+        return False

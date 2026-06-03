@@ -61,11 +61,17 @@ def main():
     df = anomaly_detector.patch_transaction_ids(df_raw)
 
     # Save to Transactions Table and fetch keys
+        # Save to Transactions Table and fetch keys
     db_ids = []
     if conn:
         print("[Database] Persisting transactions to 'transactions' table...")
         db_ids = txn_repo.save_transactions(conn, df)
         print(f"[Database] Successfully stored {len(db_ids)} transaction rows.")
+        
+        # Initialize auditor feedback records as Clear (False) by default
+        import src.feedback_repository as feedback_repo
+        print("[Database] Initializing auditor feedback records...")
+        feedback_repo.initialize_feedback(conn, df['transaction_id'].tolist())
 
     # Step 2: Anomaly Outlier Detection
     print("\n[Step 2/5] Running Statistical & ML Anomaly Detection Engines...")
@@ -123,7 +129,7 @@ def main():
             print("=========================================================================")
             
             if t_count == len(df) and r_count == len(df):
-                print(f"[Verification Result] PASS: All {len(df)} records stored successfully (Option 2).")
+                print(f"[Verification Result] PASS: All {len(df)} records stored successfully.")
             else:
                 print(f"[Verification Result] WARNING: Stored counts ({t_count}) deviate from raw row dimensions ({len(df)}).")
         except Exception as e:

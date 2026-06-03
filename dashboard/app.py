@@ -368,9 +368,11 @@ if real_summary is None or real_report is None:
     real_report = []
 
 # Initialize session state for verdicts
+# Initialize session state for verdicts (defaulting to False/Clear if None)
+# Initialize session state for verdicts (defaulting to True/Fraud if None)
 if "pending_verdicts" not in st.session_state:
     st.session_state["pending_verdicts"] = {
-        tx["transaction_id"]: tx.get("fraud_label")  # True, False, or None
+        tx["transaction_id"]: tx.get("fraud_label") if tx.get("fraud_label") is not None else True
         for tx in real_report
     }
 
@@ -413,42 +415,31 @@ if page == "⚖️ Auditor Feedback Console":
     # ─── STEP 1: CALCULATE COMPLIANCE METRICS ───
     total_cnt = len(st.session_state["pending_verdicts"])
     fraud_cnt = sum(1 for v in st.session_state["pending_verdicts"].values() if v is True)
-    clean_cnt = sum(1 for v in st.session_state["pending_verdicts"].values() if v is False)
-    pending_cnt = sum(1 for v in st.session_state["pending_verdicts"].values() if v is None)
-    reviewed_cnt = fraud_cnt + clean_cnt
-    progress_pct = (reviewed_cnt / total_cnt * 100) if total_cnt > 0 else 0.0
+    clear_cnt = total_cnt - fraud_cnt
 
-    mc1, mc2, mc3, mc4 = st.columns(4)
+    mc1, mc2, mc3 = st.columns(3)
     with mc1:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">📊 Total Reviewed</div>
-            <div class="metric-value">{reviewed_cnt:,} / {total_cnt:,}</div>
-            <div class="metric-sub" style="color: #64748B;">Audit progress: {progress_pct:.2f}%</div>
+            <div class="metric-title">📊 Total Ledgers</div>
+            <div class="metric-value">{total_cnt:,}</div>
+            <div class="metric-sub" style="color: #64748B;">Total active audit files</div>
         </div>
         """, unsafe_allow_html=True)
     with mc2:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">🔴 Confirmed Fraud</div>
+            <div class="metric-title">🔴 Flagged Fraud</div>
             <div class="metric-value" style="color: #F87171;">{fraud_cnt:,}</div>
-            <div class="metric-sub" style="color: #EF4444;">Vouchers flagged as fraud</div>
+            <div class="metric-sub" style="color: #EF4444;">Transactions marked as fraud</div>
         </div>
         """, unsafe_allow_html=True)
     with mc3:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-title">🟢 Verified Clean</div>
-            <div class="metric-value" style="color: #34D399;">{clean_cnt:,}</div>
-            <div class="metric-sub" style="color: #10B981;">Vouchers cleared clean</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with mc4:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-title">🟡 Pending Review</div>
-            <div class="metric-value" style="color: #FBBF24;">{pending_cnt:,}</div>
-            <div class="metric-sub" style="color: #EAB308;">Awaiting compliance auditing</div>
+            <div class="metric-title">🟢 Clear Status</div>
+            <div class="metric-value" style="color: #34D399;">{clear_cnt:,}</div>
+            <div class="metric-sub" style="color: #10B981;">Clean transaction records</div>
         </div>
         """, unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
@@ -459,7 +450,7 @@ if page == "⚖️ Auditor Feedback Console":
     with f_col1:
         filter_severity = st.selectbox("Risk Severity:", ["All", "CRITICAL", "HIGH", "MEDIUM", "LOW"])
     with f_col2:
-        filter_status = st.selectbox("Auditor Verdict Status:", ["All", "Pending Review", "Confirmed Fraud", "Verified Clean"])
+        filter_status = st.selectbox("Auditor Status:", ["All", "Flagged Fraud", "Clear"])
     with f_col3:
         search_txn = st.text_input("Search Transaction ID:", value="", placeholder="e.g. TXN313").strip()
 
@@ -478,11 +469,9 @@ if page == "⚖️ Auditor Feedback Console":
             continue
             
         # Verdict status
-        if filter_status == "Pending Review" and verdict is not None:
+        if filter_status == "Flagged Fraud" and verdict is not True:
             continue
-        elif filter_status == "Confirmed Fraud" and verdict is not True:
-            continue
-        elif filter_status == "Verified Clean" and verdict is not False:
+        elif filter_status == "Clear" and verdict is not False:
             continue
             
         filtered_report.append(tx)
@@ -531,14 +520,13 @@ if page == "⚖️ Auditor Feedback Console":
     else:
         # Table layout
         st.markdown("<br>", unsafe_allow_html=True)
-        h_col1, h_col2, h_col3, h_col4, h_col5, h_col6, h_col7 = st.columns([1.5, 1.5, 1.0, 1.2, 1.8, 1.2, 1.2])
+        h_col1, h_col2, h_col3, h_col4, h_col5, h_col6 = st.columns([1.5, 1.5, 1.2, 1.2, 2.0, 2.0])
         with h_col1: st.markdown("**Transaction ID**")
         with h_col2: st.markdown("**Customer ID**")
         with h_col3: st.markdown("**Risk Score**")
         with h_col4: st.markdown("**Severity**")
         with h_col5: st.markdown("**Review Status**")
-        with h_col6: st.markdown("**Action: Fraud**")
-        with h_col7: st.markdown("**Action: Clean**")
+        with h_col6: st.markdown("**Action Toggle**")
         st.markdown("<hr style='margin: 5px 0px; border-color: rgba(255,255,255,0.15);'>", unsafe_allow_html=True)
 
         for tx in page_records:
@@ -548,7 +536,7 @@ if page == "⚖️ Auditor Feedback Console":
             severity = tx["risk_severity"]
             verdict = st.session_state["pending_verdicts"].get(txn_id)
 
-            r_col1, r_col2, r_col3, r_col4, r_col5, r_col6, r_col7 = st.columns([1.5, 1.5, 1.0, 1.2, 1.8, 1.2, 1.2])
+            r_col1, r_col2, r_col3, r_col4, r_col5, r_col6 = st.columns([1.5, 1.5, 1.2, 1.2, 2.0, 2.0])
 
             with r_col1:
                 st.markdown(f"**{txn_id}**")
@@ -561,63 +549,53 @@ if page == "⚖️ Auditor Feedback Console":
                 st.markdown(f"<span style='color: {color}; font-weight: 600;'>{severity}</span>", unsafe_allow_html=True)
             with r_col5:
                 if verdict is True:
-                    st.markdown("🔴 <span style='color: #F87171; font-weight: 600;'>Fraud Case</span>", unsafe_allow_html=True)
-                elif verdict is False:
-                    st.markdown("🟢 <span style='color: #34D399; font-weight: 600;'>Verified Clean</span>", unsafe_allow_html=True)
+                    st.markdown("🔴 <span style='color: #F87171; font-weight: 600;'>Flagged Fraud</span>", unsafe_allow_html=True)
                 else:
-                    st.markdown("🟡 <span style='color: #FBBF24; font-weight: 600;'>Pending Review</span>", unsafe_allow_html=True)
+                    st.markdown("🟢 <span style='color: #34D399; font-weight: 600;'>Clear</span>", unsafe_allow_html=True)
             with r_col6:
-                label = "🚨 Fraud" if verdict is True else "Fraud"
-                type_btn = "primary" if verdict is True else "secondary"
-                if st.button(label, key=f"fraud_{txn_id}", type=type_btn, use_container_width=True):
-                    st.session_state["pending_verdicts"][txn_id] = True
-                    st.rerun()
-            with r_col7:
-                label = "✅ Clean" if verdict is False else "Clean"
-                type_btn = "primary" if verdict is False else "secondary"
-                if st.button(label, key=f"clean_{txn_id}", type=type_btn, use_container_width=True):
-                    st.session_state["pending_verdicts"][txn_id] = False
-                    st.rerun()
+                if verdict is True:
+                    if st.button("✅ Remove Flag", key=f"unflag_{txn_id}", type="primary", use_container_width=True):
+                        st.session_state["pending_verdicts"][txn_id] = False
+                        st.rerun()
+                else:
+                    if st.button("🚨 Flag Fraud", key=f"flag_{txn_id}", type="secondary", use_container_width=True):
+                        st.session_state["pending_verdicts"][txn_id] = True
+                        st.rerun()
 
             st.markdown("<hr style='margin: 3px 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
         # ─── STEP 4: SUBMIT PANEL ───
         page_txn_ids = [tx["transaction_id"] for tx in page_records]
         page_verdicts = {tid: st.session_state["pending_verdicts"].get(tid) for tid in page_txn_ids}
-        unmarked_count = sum(1 for v in page_verdicts.values() if v is None)
-        all_marked = (unmarked_count == 0)
+        flagged_count = sum(1 for v in page_verdicts.values() if v is True)
 
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("### 💾 Batch Submit Panel")
-        st.write(f"**Current Page Audit Progress:** {len(page_records) - unmarked_count} / {len(page_records)} transactions marked.")
+        st.write(f"**Current Page Status:** {flagged_count} transactions flagged as Fraud on this page.")
 
         if not db_active:
             st.warning("🟡 Live Database Connection Offline. Running in Local Files Fallback mode. Submitting reviews to PostgreSQL is disabled.")
             st.button("💾 Submit Page Reviews to PostgreSQL", disabled=True, use_container_width=True)
         else:
-            if all_marked:
-                st.success("🎉 **Ready to Submit:** All transactions on this page have been successfully reviewed and marked. Click below to write to the PostgreSQL database.")
-                if st.button("💾 Submit Page Reviews to PostgreSQL", type="primary", use_container_width=True):
-                    import src.db as db
-                    import src.feedback_repository as feedback_repo
-                    conn = db.get_connection()
-                    if conn:
-                        success_count = 0
-                        for tid, verdict in page_verdicts.items():
-                            if feedback_repo.save_feedback(conn, tid, verdict, f"Batch audited via portal (Page {st.session_state['current_page_idx']})"):
-                                success_count += 1
-                        conn.close()
-                        # Force database reload by deleting session state
-                        if "pending_verdicts" in st.session_state:
-                            del st.session_state["pending_verdicts"]
-                        st.success(f"Successfully wrote {success_count} reviews to the PostgreSQL database!")
-                        st.balloons()
-                        st.rerun()
-                    else:
-                        st.error("Error: Failed to connect to PostgreSQL database.")
-            else:
-                st.warning(f"⚠️ **Batch Submit Locked:** Please mark all remaining **{unmarked_count}** transactions on this page before submitting.")
-                st.button("💾 Submit Page Reviews to PostgreSQL", disabled=True, use_container_width=True)
+            st.info("💡 You can submit reviews to the database at any time. All status values on this page will be saved.")
+            if st.button("💾 Submit Page Reviews to PostgreSQL", type="primary", use_container_width=True):
+                import src.db as db
+                import src.feedback_repository as feedback_repo
+                conn = db.get_connection()
+                if conn:
+                    success_count = 0
+                    for tid, verdict in page_verdicts.items():
+                        if feedback_repo.save_feedback(conn, tid, verdict, f"Reviewed via portal (Page {st.session_state['current_page_idx']})"):
+                            success_count += 1
+                    conn.close()
+                    # Force database reload by deleting session state
+                    if "pending_verdicts" in st.session_state:
+                        del st.session_state["pending_verdicts"]
+                    st.success(f"Successfully saved page reviews to the PostgreSQL database!")
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.error("Error: Failed to connect to PostgreSQL database.")
 
     # Halt execution here so that the original Analytics page doesn't execute
     st.stop()
