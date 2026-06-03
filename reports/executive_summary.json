@@ -1,111 +1,111 @@
 {
     "executive_summary": {
-        "total_audited": 1884,
-        "total_flagged": 1884,
+        "total_audited": 1665,
+        "total_flagged": 1665,
         "exposure_pct": 100.0,
         "breakdown": {
-            "CRITICAL": 1752,
-            "HIGH": 125,
-            "MEDIUM": 7,
+            "CRITICAL": 1493,
+            "HIGH": 158,
+            "MEDIUM": 14,
             "LOW": 0
         }
     },
     "engine_performance": {
-        "rule_violations": 1884,
-        "zscore_flags": 30,
-        "iqr_flags": 45,
-        "groupwise_flags": 779,
-        "isolation_forest_flags": 308
+        "rule_violations": 1665,
+        "zscore_flags": 20,
+        "iqr_flags": 37,
+        "groupwise_flags": 613,
+        "isolation_forest_flags": 305
     },
     "financial_exposure": {
         "raw": {
-            "demand_exposure": 473880670856.0,
-            "outstanding_exposure": 332419308415.0,
-            "refund_exposure": 275816976415.0
+            "demand_exposure": 91105107827.0,
+            "outstanding_exposure": 245006607982.0,
+            "refund_exposure": 142283542261.0
         },
         "formatted": {
-            "demand_exposure": "\u20b947388.07 Cr",
-            "outstanding_exposure": "\u20b933241.93 Cr",
-            "refund_exposure": "\u20b927581.70 Cr"
+            "demand_exposure": "\u20b99110.51 Cr",
+            "outstanding_exposure": "\u20b924500.66 Cr",
+            "refund_exposure": "\u20b914228.35 Cr"
         }
     },
     "fraud_patterns": {
-        "Phantom Billing": 287,
-        "Critical Fraud: Phantom Settlement": 191,
-        "High Policy Outlier: Kickback Discount": 175,
-        "Bulk System Glitch": 171,
-        "Project Distribution Shift": 155,
-        "Collection Outlier": 28,
-        "Laundering Cash": 9,
-        "Billing Escalation": 2
+        "Bulk System Glitch": 494,
+        "Demand Outlier": 154,
+        "Phantom Billing": 82,
+        "Critical Fraud: Phantom Settlement": 63,
+        "High Policy Outlier: Kickback Discount": 42,
+        "Laundering Cash": 38,
+        "Default Evasion": 5,
+        "Collection Outlier": 3
     },
     "grouped_recommendations": {
-        "Immediate Ledger Freeze Required": 1599,
-        "High Priority Forensic Audit": 26,
-        "Senior Forensic Compliance Review": 127,
-        "AML Review Required": 125,
-        "Routine Policy Validation Check": 7
+        "Immediate Ledger Freeze Required": 1396,
+        "High Priority Forensic Audit": 4,
+        "Senior Forensic Compliance Review": 93,
+        "AML Review Required": 158,
+        "Routine Policy Validation Check": 14
     },
     "top_10_high_priority": [
         {
-            "transaction_id": "SYS_MISSING_ROW_1768",
+            "transaction_id": "SYS_MISSING_ROW_1291",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-24] - Temporal Anomaly. Payment logged prior to demand date. Verify CRM logging latency.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [SOP-Z-COLLECTED_AMOUNT] - Verify large cash collection voucher against corresponding bank deposit receipts.; [SOP-IQR-OUTLIER] - Statistical IQR Bounds Outlier: collected_amount (IQR=13554949.75); [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance."
         },
         {
-            "transaction_id": "SYS_MISSING_ROW_441",
+            "transaction_id": "SYS_MISSING_ROW_1532",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [SOP-Z-COLLECTED_AMOUNT] - Verify large cash collection voucher against corresponding bank deposit receipts.; [SOP-IQR-OUTLIER] - Statistical IQR Bounds Outlier: collected_amount (IQR=13554949.75); [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-20] - Credit Balance Flag. Negative outstanding balance. Reconcile over-collections.; [RV-24] - Temporal Anomaly. Payment logged prior to demand date. Verify CRM logging latency.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency.; [SOP-IQR-OUTLIER] - Statistical IQR Bounds Outlier: outstanding_amount (IQR=696929237.00); [SOP-GW-BURST] - Reconcile automated invoicing triggers. Check sequential timestamps for billing loop glitches.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "SYS_MISSING_ROW_756",
+            "transaction_id": "SYS_MISSING_ROW_72",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [SOP-Z-COLLECTED_AMOUNT] - Verify large cash collection voucher against corresponding bank deposit receipts.; [SOP-IQR-OUTLIER] - Statistical IQR Bounds Outlier: collected_amount (IQR=13554949.75); [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-24] - Temporal Anomaly. Payment logged prior to demand date. Verify CRM logging latency.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "SYS_MISSING_ROW_565",
+            "transaction_id": "SYS_MISSING_ROW_1623",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [SOP-Z-COLLECTED_AMOUNT] - Verify large cash collection voucher against corresponding bank deposit receipts.; [SOP-IQR-OUTLIER] - Statistical IQR Bounds Outlier: collected_amount (IQR=13554949.75); [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-20] - Credit Balance Flag. Negative outstanding balance. Reconcile over-collections."
         },
         {
-            "transaction_id": "SYS_MISSING_ROW_1802",
+            "transaction_id": "SYS_MISSING_ROW_983",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-24] - Temporal Anomaly. Payment logged prior to demand date. Verify CRM logging latency.; [SOP-Z-COLLECTED_AMOUNT] - Verify large cash collection voucher against corresponding bank deposit receipts.; [SOP-IQR-OUTLIER] - Statistical IQR Bounds Outlier: collected_amount (IQR=13554949.75); [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "SYS_MISSING_ROW_1028",
+            "transaction_id": "SYS_MISSING_ROW_1592",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [SOP-Z-COLLECTED_AMOUNT] - Verify large cash collection voucher against corresponding bank deposit receipts.; [SOP-IQR-OUTLIER] - Statistical IQR Bounds Outlier: collected_amount (IQR=13554949.75); [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "SYS_MISSING_ROW_1704",
+            "transaction_id": "TXN1377",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-24] - Temporal Anomaly. Payment logged prior to demand date. Verify CRM logging latency.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [SOP-Z-COLLECTED_AMOUNT] - Verify large cash collection voucher against corresponding bank deposit receipts.; [SOP-IQR-OUTLIER] - Statistical IQR Bounds Outlier: collected_amount (IQR=13554949.75); [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-20] - Credit Balance Flag. Negative outstanding balance. Reconcile over-collections.; [RV-31] - Verify holiday/weekend billing authorization. Ensure invoice generation complies with bank operating hours.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "SYS_MISSING_ROW_1250",
+            "transaction_id": "SYS_MISSING_ROW_1489",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [SOP-Z-COLLECTED_AMOUNT] - Verify large cash collection voucher against corresponding bank deposit receipts.; [SOP-IQR-OUTLIER] - Statistical IQR Bounds Outlier: collected_amount (IQR=13554949.75); [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-20] - Credit Balance Flag. Negative outstanding balance. Reconcile over-collections.; [RV-24] - Temporal Anomaly. Payment logged prior to demand date. Verify CRM logging latency.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "TXN1243",
+            "transaction_id": "SYS_MISSING_ROW_170",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-02] - Duplicate ID threat. Reconcile unit ledger balances and check for duplicate billing vouchers.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-34] - Multiple customers linked to identical transaction. Suspend ledger to prevent double-crediting.; [SOP-Z-COLLECTED_AMOUNT] - Verify large cash collection voucher against corresponding bank deposit receipts.; [SOP-IQR-OUTLIER] - Statistical IQR Bounds Outlier: collected_amount (IQR=13554949.75)"
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-20] - Credit Balance Flag. Negative outstanding balance. Reconcile over-collections.; [SOP-GW-BURST] - Reconcile automated invoicing triggers. Check sequential timestamps for billing loop glitches.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "SYS_MISSING_ROW_1716",
+            "transaction_id": "SYS_MISSING_ROW_1261",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [SOP-Z-COLLECTED_AMOUNT] - Verify large cash collection voucher against corresponding bank deposit receipts.; [SOP-IQR-OUTLIER] - Statistical IQR Bounds Outlier: collected_amount (IQR=13554949.75); [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
+            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-24] - Temporal Anomaly. Payment logged prior to demand date. Verify CRM logging latency.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency.; [RV-31] - Verify holiday/weekend billing authorization. Ensure invoice generation complies with bank operating hours.; [SOP-GW-BURST] - Reconcile automated invoicing triggers. Check sequential timestamps for billing loop glitches.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         }
     ]
 }

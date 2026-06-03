@@ -118,12 +118,218 @@ html, body, [class*="css"] {
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DATABASE LOADERS & WORKSPACE PORTABILITY
+# DATABASE LOADERS & WORKSPACE PORTABILITY (OPTION 2)
 # ─────────────────────────────────────────────────────────────────────────────
 REPORTS_DIR = r"C:\Projects\OPTOxCRM Finance Risk Radar\reports"
-# Portability check: dynamic local fallback if absolute path does not exist
 if not os.path.exists(REPORTS_DIR):
     REPORTS_DIR = os.path.join(os.getcwd(), "reports")
+
+def load_database_reports():
+    """
+    Connects to PostgreSQL and retrieves the consolidated ledger,
+    dynamically reconstructing executive summary statistics.
+    """
+    import sys
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    try:
+        import src.db as db
+    except ImportError:
+        return None, None
+
+    conn = db.get_connection()
+    if conn is None:
+        return None, None
+
+    try:
+        risk_list = []
+        with conn.cursor() as cur:
+            # Query transactions joined with their risk evaluations using transaction row id
+                        # Query transactions joined with their risk evaluations and auditor feedback
+            query = """
+                SELECT 
+                    t.id AS transaction_row_id, t.transaction_id, t.customer_id, t.project_id, t.unit_id,
+                    t.demand_date, t.payment_date, t.demand_amount, t.collected_amount,
+                    t.outstanding_amount, t.discount_amount, t.refund_amount,
+                    t.payment_delay_days, t.payment_gap_days,
+                    r.risk_score, r.severity, r.recommendation,
+                    f.fraud_label, f.auditor_comments, f.reviewed_at
+                FROM transactions t
+                LEFT JOIN risk_results r ON t.id = r.transaction_row_id
+                LEFT JOIN auditor_feedback f ON t.transaction_id = f.transaction_id;
+            """
+            cur.execute(query)
+            rows = cur.fetchall()
+            colnames = [desc[0] for desc in cur.description]
+            db_txs = [dict(zip(colnames, row)) for row in rows]
+            
+            # Fetch all anomaly results for structural mapping
+            cur.execute("SELECT transaction_row_id, engine_name, anomaly_flag, anomaly_score, reason FROM anomaly_results;")
+            anom_rows = cur.fetchall()
+            anom_map = {}
+            for row_id, engine, flag, score, reason in anom_rows:
+                if row_id not in anom_map:
+                    anom_map[row_id] = []
+                anom_map[row_id].append({
+                    "engine_name": engine,
+                    "anomaly_flag": flag,
+                    "anomaly_score": score,
+                    "reason": reason
+                })
+
+            for tx in db_txs:
+                row_id = tx["transaction_row_id"]
+                tx_anoms = anom_map.get(row_id, [])
+                
+                # Reconstruct rule engine violations list
+                violations = []
+                rule_row = next((x for x in tx_anoms if x["engine_name"] == "RuleEngine"), None)
+                if rule_row and rule_row["reason"]:
+                    parts = rule_row["reason"].split("; ")
+                    for part in parts:
+                        if "]" in part:
+                            r_id, r_desc = part.split("]", 1)
+                            violations.append({
+                                "rule_id": r_id.replace("[", "").strip(),
+                                "description": r_desc.strip()
+                            })
+
+                # Reconstruct anomaly sub-engine details
+                z_row = next((x for x in tx_anoms if x["engine_name"] == "ZScore"), None)
+                iqr_row = next((x for x in tx_anoms if x["engine_name"] == "IQR"), None)
+                gw_row = next((x for x in tx_anoms if x["engine_name"] == "Groupwise"), None)
+                if_row = next((x for x in tx_anoms if x["engine_name"] == "IsolationForest"), None)
+                
+                gw_anoms_list = []
+                if gw_row and gw_row["reason"]:
+                    gw_parts = gw_row["reason"].split("; ")
+                    for g_part in gw_parts:
+                        if "]" in g_part:
+                            case_name, case_desc = g_part.split("]", 1)
+                            gw_anoms_list.append({
+                                "case": case_name.replace("[", "").strip(),
+                                "reason": case_desc.strip()
+                            })
+
+                anomaly_details = {
+                    "zscore_flagged": z_row is not None,
+                    "zscore_reason": z_row["reason"] if z_row else None,
+                    "iqr_flagged": iqr_row is not None,
+                    "iqr_reason": iqr_row["reason"] if iqr_row else None,
+                    "groupwise_flagged": gw_row is not None,
+                    "groupwise_anomalies_count": len(gw_anoms_list),
+                    "groupwise_anomalies": gw_anoms_list,
+                    "isolation_forest_flagged": if_row is not None,
+                    "isolation_forest_score": float(if_row["anomaly_score"]) if (if_row and if_row["anomaly_score"]) else 0.0,
+                    "isolation_forest_reason": if_row["reason"] if if_row else None
+                }
+
+                risk_list.append({
+                    "transaction_id": tx["transaction_id"],
+                    "customer_id": tx["customer_id"],
+                    "project_id": tx["project_id"],
+                    "unit_id": tx["unit_id"],
+                    "demand_amount": float(tx["demand_amount"]) if tx["demand_amount"] is not None else None,
+                    "collected_amount": float(tx["collected_amount"]) if tx["collected_amount"] is not None else None,
+                    "outstanding_amount": float(tx["outstanding_amount"]) if tx["outstanding_amount"] is not None else None,
+                    "discount_amount": float(tx["discount_amount"]) if tx["discount_amount"] is not None else None,
+                    "refund_amount": float(tx["refund_amount"]) if tx["refund_amount"] is not None else None,
+                    "payment_delay_days": tx["payment_delay_days"],
+                    "payment_gap_days": tx["payment_gap_days"],
+                    "demand_date": str(tx["demand_date"]) if tx["demand_date"] is not None else None,
+                    "payment_date": str(tx["payment_date"]) if tx["payment_date"] is not None else None,
+                    "risk_score": tx["risk_score"] or 0,
+                    "risk_severity": tx["severity"] or "LOW",
+                    "recommended_action": tx["recommendation"] or "",
+                    "violations_count": len(violations),
+                    "violations": violations,
+                    "anomaly_details": anomaly_details,
+                    "fraud_label": tx.get("fraud_label"),
+                    "auditor_comments": tx.get("auditor_comments"),
+                    "reviewed_at": str(tx.get("reviewed_at")) if tx.get("reviewed_at") is not None else None
+                })
+        
+        # Dynamic recalculation of summary stats
+        total_audited = len(risk_list)
+        breakdown = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+        for r in risk_list:
+            breakdown[r["risk_severity"]] += 1
+            
+        total_flagged = breakdown["CRITICAL"] + breakdown["HIGH"] + breakdown["MEDIUM"]
+        exposure_pct = (total_flagged / total_audited * 100) if total_audited > 0 else 0.0
+        
+        outstanding_exposure = sum(r["outstanding_amount"] for r in risk_list if r["outstanding_amount"] and r["risk_severity"] != "LOW")
+        demand_exposure = sum(r["demand_amount"] for r in risk_list if r["demand_amount"] and r["risk_severity"] != "LOW")
+        refund_exposure = sum(r["refund_amount"] for r in risk_list if r["refund_amount"] and r["risk_severity"] != "LOW")
+        
+        def format_cr(val):
+            cr = val / 10000000
+            return f"₹{cr:.2f} Cr"
+
+        fraud_patterns = {}
+        for r in risk_list:
+            patterns = []
+            for g in r["anomaly_details"]["groupwise_anomalies"]:
+                case = g.get("case", "")
+                if case:
+                    clean = case.replace(" Flag", "").replace(" Outlier", "").strip()
+                    patterns.append(clean)
+            for v in r["violations"]:
+                desc = v.get("description", "")
+                r_id = v.get("rule_id", "")
+                if "refund" in desc.lower() or "over-collection" in desc.lower() or r_id in ["RV-14", "RV-15"]:
+                    patterns.append("Outflow / Refund Exposure")
+                elif "duplicate" in desc.lower() or r_id in ["RV-02", "RV-34", "RV-35"]:
+                    patterns.append("Duplicate Ledger Posting")
+                elif "gap" in desc.lower() or r_id == "RV-08":
+                    patterns.append("Sequential Gap Outlier")
+                elif "missing" in desc.lower() or "blank" in desc.lower() or r_id in ["RV-01", "RV-03", "RV-04", "RV-05"]:
+                    patterns.append("Missing Identity Anchor")
+            if r["anomaly_details"]["isolation_forest_flagged"]:
+                patterns.append("Isolation Forest (ML Outlier)")
+            if r["anomaly_details"]["zscore_flagged"]:
+                patterns.append("Statistical Z-Score Outlier")
+            if r["anomaly_details"]["iqr_flagged"]:
+                patterns.append("IQR Deviation Outlier")
+            
+            unique_patterns = list(set(patterns))
+            if not unique_patterns:
+                unique_patterns = ["Standard Policy Outlier"]
+            for p in unique_patterns:
+                fraud_patterns[p] = fraud_patterns.get(p, 0) + 1
+
+        exec_summary = {
+            "executive_summary": {
+                "total_audited": total_audited,
+                "total_flagged": total_flagged,
+                "exposure_pct": exposure_pct,
+                "breakdown": breakdown
+            },
+            "fraud_patterns": fraud_patterns,
+            "financial_exposure": {
+                "raw": {
+                    "outstanding_exposure": outstanding_exposure,
+                    "demand_exposure": demand_exposure,
+                    "refund_exposure": refund_exposure
+                },
+                "formatted": {
+                    "outstanding_exposure": format_cr(outstanding_exposure),
+                    "demand_exposure": format_cr(demand_exposure),
+                    "refund_exposure": format_cr(refund_exposure)
+                }
+            },
+            "top_10_high_priority": sorted(
+                [{"transaction_id": r["transaction_id"], "risk_score": r["risk_score"], "severity": r["risk_severity"], "recommended_action": r["recommended_action"]} for r in risk_list],
+                key=lambda x: x["risk_score"],
+                reverse=True
+            )[:10]
+        }
+        
+        return exec_summary, risk_list
+    except Exception as e:
+        print(f"[Database Load Error] Failed to load from DB: {e}")
+        return None, None
+    finally:
+        conn.close()
 
 def load_local_reports():
     """Reads execution engine output JSONs from reports folder if available."""
@@ -149,16 +355,274 @@ def load_local_reports():
             
     return exec_summary, risk_list
 
-# Load live production dataset
-real_summary, real_report = load_local_reports()
+# Load live database dataset first with local files fallback
+real_summary, real_report = load_database_reports()
+db_active = True
 
 if real_summary is None or real_report is None:
-    # Double-safe initialization when folders are empty
+    db_active = False
+    real_summary, real_report = load_local_reports()
+
+if real_summary is None or real_report is None:
     real_summary = {}
     real_report = []
 
+# Initialize session state for verdicts
+if "pending_verdicts" not in st.session_state:
+    st.session_state["pending_verdicts"] = {
+        tx["transaction_id"]: tx.get("fraud_label")  # True, False, or None
+        for tx in real_report
+    }
 
-# Parse live ledger values from executive summary
+# ─────────────────────────────────────────────────────────────────────────────
+# SIDEBAR NAVIGATION & PORTAL ROUTING
+# ─────────────────────────────────────────────────────────────────────────────
+st.sidebar.markdown("### 🛡️ Compliance Control")
+page = st.sidebar.selectbox("Navigate Portal", ["📊 Executive Analytics", "⚖️ Auditor Feedback Console"])
+
+if page == "⚖️ Auditor Feedback Console":
+    # ─── AUDITOR FEEDBACK PAGE VIEW ───
+    st.markdown("""
+    <h1 class='main-title' style='user-select: text;'>
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="
+            vertical-align: middle; 
+            margin-right: 12px; 
+            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.65));
+            user-select: none;
+            pointer-events: none;
+        ">
+            <defs>
+                <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#60A5FA"/>
+                    <stop offset="100%" stop-color="#1D4ED8"/>
+                </linearGradient>
+                <linearGradient id="borderGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#F8FAFC"/>
+                    <stop offset="100%" stop-color="#94A3B8"/>
+                </linearGradient>
+            </defs>
+            <path d="M12 2L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 2Z" fill="url(#shieldGrad)" stroke="url(#borderGrad)" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M12 3.5V21.3C16.2 20.1 19 16.2 19 11V6.2L12 3.5Z" fill="#93C5FD" opacity="0.3"/>
+        </svg>Auditor Feedback Console
+    </h1>
+    """, unsafe_allow_html=True)
+    db_status_badge = "🟢 PostgreSQL Connected" if db_active else "🟡 Local Files Fallback"
+    st.caption(f"Portal View: Live Compliance Audit Log Queue · Connection: {db_status_badge} · Local sandbox port 8501")
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ─── STEP 1: CALCULATE COMPLIANCE METRICS ───
+    total_cnt = len(st.session_state["pending_verdicts"])
+    fraud_cnt = sum(1 for v in st.session_state["pending_verdicts"].values() if v is True)
+    clean_cnt = sum(1 for v in st.session_state["pending_verdicts"].values() if v is False)
+    pending_cnt = sum(1 for v in st.session_state["pending_verdicts"].values() if v is None)
+    reviewed_cnt = fraud_cnt + clean_cnt
+    progress_pct = (reviewed_cnt / total_cnt * 100) if total_cnt > 0 else 0.0
+
+    mc1, mc2, mc3, mc4 = st.columns(4)
+    with mc1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">📊 Total Reviewed</div>
+            <div class="metric-value">{reviewed_cnt:,} / {total_cnt:,}</div>
+            <div class="metric-sub" style="color: #64748B;">Audit progress: {progress_pct:.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with mc2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">🔴 Confirmed Fraud</div>
+            <div class="metric-value" style="color: #F87171;">{fraud_cnt:,}</div>
+            <div class="metric-sub" style="color: #EF4444;">Vouchers flagged as fraud</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with mc3:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">🟢 Verified Clean</div>
+            <div class="metric-value" style="color: #34D399;">{clean_cnt:,}</div>
+            <div class="metric-sub" style="color: #10B981;">Vouchers cleared clean</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with mc4:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">🟡 Pending Review</div>
+            <div class="metric-value" style="color: #FBBF24;">{pending_cnt:,}</div>
+            <div class="metric-sub" style="color: #EAB308;">Awaiting compliance auditing</div>
+        </div>
+        """, unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ─── STEP 2: RENDER FILTERS ───
+    st.markdown("### 🔍 Filter Work Queue")
+    f_col1, f_col2, f_col3 = st.columns(3)
+    with f_col1:
+        filter_severity = st.selectbox("Risk Severity:", ["All", "CRITICAL", "HIGH", "MEDIUM", "LOW"])
+    with f_col2:
+        filter_status = st.selectbox("Auditor Verdict Status:", ["All", "Pending Review", "Confirmed Fraud", "Verified Clean"])
+    with f_col3:
+        search_txn = st.text_input("Search Transaction ID:", value="", placeholder="e.g. TXN313").strip()
+
+    # Apply filters
+    filtered_report = []
+    for tx in real_report:
+        txn_id = tx["transaction_id"]
+        verdict = st.session_state["pending_verdicts"].get(txn_id)
+        
+        # Search ID
+        if search_txn and search_txn.upper() not in txn_id.upper():
+            continue
+            
+        # Severity
+        if filter_severity != "All" and tx.get("risk_severity") != filter_severity:
+            continue
+            
+        # Verdict status
+        if filter_status == "Pending Review" and verdict is not None:
+            continue
+        elif filter_status == "Confirmed Fraud" and verdict is not True:
+            continue
+        elif filter_status == "Verified Clean" and verdict is not False:
+            continue
+            
+        filtered_report.append(tx)
+
+    # ─── STEP 3: PAGINATION ───
+    total_records = len(filtered_report)
+    total_pages = max(1, (total_records + 99) // 100)
+
+    if "current_page_idx" not in st.session_state:
+        st.session_state["current_page_idx"] = 1
+        
+    if st.session_state["current_page_idx"] > total_pages:
+        st.session_state["current_page_idx"] = total_pages
+
+    st.markdown("---")
+    st.markdown("### 📋 Transaction Auditing Queue")
+
+    p_col1, p_col2, p_col3 = st.columns([1, 2, 1])
+    with p_col1:
+        if st.button("⬅️ Previous Page", disabled=(st.session_state["current_page_idx"] == 1)):
+            st.session_state["current_page_idx"] -= 1
+            st.rerun()
+    with p_col3:
+        if st.button("Next Page ➡️", disabled=(st.session_state["current_page_idx"] == total_pages)):
+            st.session_state["current_page_idx"] += 1
+            st.rerun()
+    with p_col2:
+        current_page = st.selectbox(
+            "Select Page:",
+            options=range(1, total_pages + 1),
+            index=st.session_state["current_page_idx"] - 1,
+            format_func=lambda x: f"Page {x} of {total_pages} (Rows {(x-1)*100+1} - {min(x*100, total_records)})",
+            key="jump_page_select"
+        )
+        if current_page != st.session_state["current_page_idx"]:
+            st.session_state["current_page_idx"] = current_page
+            st.rerun()
+
+    # Get page slice
+    start_idx = (st.session_state["current_page_idx"] - 1) * 100
+    end_idx = min(start_idx + 100, total_records)
+    page_records = filtered_report[start_idx:end_idx]
+
+    if not page_records:
+        st.info("No transactions match the selected filters.")
+    else:
+        # Table layout
+        st.markdown("<br>", unsafe_allow_html=True)
+        h_col1, h_col2, h_col3, h_col4, h_col5, h_col6, h_col7 = st.columns([1.5, 1.5, 1.0, 1.2, 1.8, 1.2, 1.2])
+        with h_col1: st.markdown("**Transaction ID**")
+        with h_col2: st.markdown("**Customer ID**")
+        with h_col3: st.markdown("**Risk Score**")
+        with h_col4: st.markdown("**Severity**")
+        with h_col5: st.markdown("**Review Status**")
+        with h_col6: st.markdown("**Action: Fraud**")
+        with h_col7: st.markdown("**Action: Clean**")
+        st.markdown("<hr style='margin: 5px 0px; border-color: rgba(255,255,255,0.15);'>", unsafe_allow_html=True)
+
+        for tx in page_records:
+            txn_id = tx["transaction_id"]
+            cust_id = tx["customer_id"] or "N/A"
+            risk_score = tx["risk_score"]
+            severity = tx["risk_severity"]
+            verdict = st.session_state["pending_verdicts"].get(txn_id)
+
+            r_col1, r_col2, r_col3, r_col4, r_col5, r_col6, r_col7 = st.columns([1.5, 1.5, 1.0, 1.2, 1.8, 1.2, 1.2])
+
+            with r_col1:
+                st.markdown(f"**{txn_id}**")
+            with r_col2:
+                st.markdown(f"`{cust_id}`")
+            with r_col3:
+                st.markdown(f"{risk_score} / 100")
+            with r_col4:
+                color = "#EF4444" if severity == "CRITICAL" else "#F97316" if severity == "HIGH" else "#EAB308" if severity == "MEDIUM" else "#10B981"
+                st.markdown(f"<span style='color: {color}; font-weight: 600;'>{severity}</span>", unsafe_allow_html=True)
+            with r_col5:
+                if verdict is True:
+                    st.markdown("🔴 <span style='color: #F87171; font-weight: 600;'>Fraud Case</span>", unsafe_allow_html=True)
+                elif verdict is False:
+                    st.markdown("🟢 <span style='color: #34D399; font-weight: 600;'>Verified Clean</span>", unsafe_allow_html=True)
+                else:
+                    st.markdown("🟡 <span style='color: #FBBF24; font-weight: 600;'>Pending Review</span>", unsafe_allow_html=True)
+            with r_col6:
+                label = "🚨 Fraud" if verdict is True else "Fraud"
+                type_btn = "primary" if verdict is True else "secondary"
+                if st.button(label, key=f"fraud_{txn_id}", type=type_btn, use_container_width=True):
+                    st.session_state["pending_verdicts"][txn_id] = True
+                    st.rerun()
+            with r_col7:
+                label = "✅ Clean" if verdict is False else "Clean"
+                type_btn = "primary" if verdict is False else "secondary"
+                if st.button(label, key=f"clean_{txn_id}", type=type_btn, use_container_width=True):
+                    st.session_state["pending_verdicts"][txn_id] = False
+                    st.rerun()
+
+            st.markdown("<hr style='margin: 3px 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
+
+        # ─── STEP 4: SUBMIT PANEL ───
+        page_txn_ids = [tx["transaction_id"] for tx in page_records]
+        page_verdicts = {tid: st.session_state["pending_verdicts"].get(tid) for tid in page_txn_ids}
+        unmarked_count = sum(1 for v in page_verdicts.values() if v is None)
+        all_marked = (unmarked_count == 0)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("### 💾 Batch Submit Panel")
+        st.write(f"**Current Page Audit Progress:** {len(page_records) - unmarked_count} / {len(page_records)} transactions marked.")
+
+        if not db_active:
+            st.warning("🟡 Live Database Connection Offline. Running in Local Files Fallback mode. Submitting reviews to PostgreSQL is disabled.")
+            st.button("💾 Submit Page Reviews to PostgreSQL", disabled=True, use_container_width=True)
+        else:
+            if all_marked:
+                st.success("🎉 **Ready to Submit:** All transactions on this page have been successfully reviewed and marked. Click below to write to the PostgreSQL database.")
+                if st.button("💾 Submit Page Reviews to PostgreSQL", type="primary", use_container_width=True):
+                    import src.db as db
+                    import src.feedback_repository as feedback_repo
+                    conn = db.get_connection()
+                    if conn:
+                        success_count = 0
+                        for tid, verdict in page_verdicts.items():
+                            if feedback_repo.save_feedback(conn, tid, verdict, f"Batch audited via portal (Page {st.session_state['current_page_idx']})"):
+                                success_count += 1
+                        conn.close()
+                        # Force database reload by deleting session state
+                        if "pending_verdicts" in st.session_state:
+                            del st.session_state["pending_verdicts"]
+                        st.success(f"Successfully wrote {success_count} reviews to the PostgreSQL database!")
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error("Error: Failed to connect to PostgreSQL database.")
+            else:
+                st.warning(f"⚠️ **Batch Submit Locked:** Please mark all remaining **{unmarked_count}** transactions on this page before submitting.")
+                st.button("💾 Submit Page Reviews to PostgreSQL", disabled=True, use_container_width=True)
+
+    # Halt execution here so that the original Analytics page doesn't execute
+    st.stop()
+
+# Parse values
 exec_data = (real_summary or {}).get("executive_summary") or {}
 total_audited = exec_data.get("total_audited", 0)
 total_flagged = exec_data.get("total_flagged", 0)
@@ -202,7 +666,8 @@ st.markdown("""
     </svg>OPTOxCRM Finance Risk Radar
 </h1>
 """, unsafe_allow_html=True)
-st.caption("Portal View: Live Production Audit Logs · Running locally under secure sandboxed port localhost:8501")
+db_status_badge = "🟢 PostgreSQL Connected" if db_active else "🟡 Local Files Fallback"
+st.caption(f"Portal View: Live Production Audit Logs · Connection: {db_status_badge} · Running locally under secure sandboxed port localhost:8501")
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────

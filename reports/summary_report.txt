@@ -3,47 +3,47 @@
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  1. DATASET OVERVIEW & CLASS BREAKDOWN                                       │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│  Total Transactions Scored : 1884        Risk Exposure : 100.0%              │
-│  Total Flagged Anomalies   : 1884        Critical Risk : 1752                │
-│  High Severity Risks       : 125         Medium Risks  : 7                   │
+│  Total Transactions Scored : 1665        Risk Exposure : 100.0%              │
+│  Total Flagged Anomalies   : 1665        Critical Risk : 1493                │
+│  High Severity Risks       : 158         Medium Risks  : 14                  │
 │  Low Severity/Safe Entries : 0                                               │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  2. FINANCIAL VALUE AT RISK (EXPOSURE)                                       │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│  Total Demand Value at Risk (Critical + High)  : ₹47388.07 Cr                │
-│  Flagged Outstanding Account Exposure          : ₹33241.93 Cr                │
-│  Flagged Outflow/Refund Exposure               : ₹27581.70 Cr                │
+│  Total Demand Value at Risk (Critical + High)  : ₹9110.51 Cr                 │
+│  Flagged Outstanding Account Exposure          : ₹24500.66 Cr                │
+│  Flagged Outflow/Refund Exposure               : ₹14228.35 Cr                │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  3. SUB-ENGINE DETECTION PERFORMANCE STATS                                   │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│  Rule Violations (Hard Rules)  : 1884 │ Z-Score Flags                  : 30   │
-│  IQR Flags (Statistical Out)   : 45  │ Isolation Forest (ML Outlier)  : 308  │
-│  Groupwise Systemic Outliers   : 779 │                                       │
+│  Rule Violations (Hard Rules)  : 1665 │ Z-Score Flags                  : 20   │
+│  IQR Flags (Statistical Out)   : 37  │ Isolation Forest (ML Outlier)  : 305  │
+│  Groupwise Systemic Outliers   : 613 │                                       │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  4. SUSPECTED FRAUD PATTERNS & DYNAMIC CFO RECOMMENDATIONS                   │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  [Fraud Patterns Detected]           │ [CFO Action Mitigation Groups]        │
-│  - Phantom Billing: 287              │  * Immediate Ledger Freeze: 1599      │
-│  - Critical Fraud: Phantom: 191      │  * High Priority Forensic Audit: 26   │
-│  - High Policy Outlier: Ki: 175      │  * Senior Forensic Compliance R: 127  │
-│  - Bulk System Glitch: 171           │  * AML Review: 125                    │
-│  - Project Distribution Sh: 155      │  * Routine Validation Check: 7        │
-│  - Collection Outlier: 28            │                                       │
-│  - Laundering Cash: 9                │                                       │
-│  - Billing Escalation: 2             │                                       │
+│  - Bulk System Glitch: 494           │  * Immediate Ledger Freeze: 1396      │
+│  - Demand Outlier: 154               │  * High Priority Forensic Audit: 4    │
+│  - Phantom Billing: 82               │  * Senior Forensic Compliance R: 93   │
+│  - Critical Fraud: Phantom: 63       │  * AML Review: 158                    │
+│  - High Policy Outlier: Ki: 42       │  * Routine Validation Check: 14       │
+│  - Laundering Cash: 38               │                                       │
+│  - Default Evasion: 5                │                                       │
+│  - Collection Outlier: 3             │                                       │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  5. HIGH PRIORITY AUDIT Remediation QUEUE (TOP 10)                           │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  Rank │ Transaction ID      │ Risk Score │ Severity │ CFO Forensic Action       │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│  #1   │ SYS_MISSING_ROW_176 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #2   │ SYS_MISSING_ROW_441 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #3   │ SYS_MISSING_ROW_756 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #4   │ SYS_MISSING_ROW_565 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #5   │ SYS_MISSING_ROW_180 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #6   │ SYS_MISSING_ROW_102 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #7   │ SYS_MISSING_ROW_170 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #8   │ SYS_MISSING_ROW_125 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #9   │ TXN1243             │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #10  │ SYS_MISSING_ROW_171 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #1   │ SYS_MISSING_ROW_129 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #2   │ SYS_MISSING_ROW_153 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #3   │ SYS_MISSING_ROW_72  │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #4   │ SYS_MISSING_ROW_162 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #5   │ SYS_MISSING_ROW_983 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #6   │ SYS_MISSING_ROW_159 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #7   │ TXN1377             │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #8   │ SYS_MISSING_ROW_148 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #9   │ SYS_MISSING_ROW_170 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #10  │ SYS_MISSING_ROW_126 │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
 └──────────────────────────────────────────────────────────────────────────────┘
