@@ -19,6 +19,7 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
         risk_score = importlib.import_module("src.09_risk_score")
         rec_engine = importlib.import_module("src.10_recommendation_engine")
         report_gen = importlib.import_module("src.11_report_generator")
+        rolling_window = importlib.import_module("src.rolling_window") 
         
         # Ingest database repositories
         import src.db as db
@@ -98,10 +99,19 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
     enriched_profiles = rec_engine.run_recommendation_engine()
 
     # Save to Risk Results Table
+        # Save to Risk Results Table
     if conn and db_ids:
         print("[Database] Persisting assessment outcomes to 'risk_results' table...")
         risk_saved = risk_repo.save_risk_results(conn, enriched_profiles, db_ids)
         print(f"[Database] Successfully stored {risk_saved} risk profile records.")
+        
+        # Step 4.5: Calculate and Persist Rolling Window Features
+        print("\n[Step 4.5] Running Rolling Window Feature Layer...")
+        rw_success = rolling_window.run_rolling_window_pipeline(conn, user_id=user_id, batch_id=batch_id)
+        if rw_success:
+            print("[Orchestrator] Rolling window features generated successfully.")
+        else:
+            print("[Orchestrator] Warning: Rolling window feature generation encountered errors.")
 
     # Step 5: Consolidated Exporter
     print("\n[Step 5/5] Packaging Consolidated Corporate Reports...")
@@ -128,14 +138,24 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
                     WHERE t.user_id = %s;
                 """, (user_id,))
                 r_count = cur.fetchone()[0]
+                
+                # Fetch rolling window features count
+                cur.execute("""
+                    SELECT COUNT(*) 
+                    FROM transaction_rolling_features trf
+                    JOIN transactions t ON trf.transaction_row_id = t.id
+                    WHERE t.user_id = %s;
+                """, (user_id,))
+                trf_count = cur.fetchone()[0]  # <-- ADD THIS QUERY
             
             print("=========================================================================")
-            print("                POSTGRESQL DATABASE VERIFICATION (OPTION 2)              ")
+            print("                POSTGRESQL DATABASE VERIFICATION                         ")
             print("=========================================================================")
             print(f"  - User partition           : {user_id}")
             print(f"  - Table 'transactions'     : {t_count} records (Expected: {len(df)})")
             print(f"  - Table 'anomaly_results'  : {a_count} records")
             print(f"  - Table 'risk_results'     : {r_count} records (Expected: {len(df)})")
+            print(f"  - Table 'rolling_features' : {trf_count} records (Expected: {len(df)})") # <-- ADD THIS LINE
             print("=========================================================================")
             
             if t_count == len(df) and r_count == len(df):

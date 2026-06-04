@@ -144,7 +144,7 @@ def init_db(conn):
         $$ LANGUAGE plpgsql;
         """,
 
-        # Bind Trigger to Table
+            # Bind Trigger to Table
         """
         DROP TRIGGER IF EXISTS trigger_log_transaction_update ON transactions;
         """,
@@ -153,21 +153,47 @@ def init_db(conn):
         AFTER UPDATE ON transactions
         FOR EACH ROW
         EXECUTE FUNCTION log_transaction_update();
+        """,
+        # Table 6: transaction_rolling_features (Phase 7 Rolling Window Layer)
+        """
+        CREATE TABLE IF NOT EXISTS transaction_rolling_features (
+            transaction_row_id INT PRIMARY KEY REFERENCES transactions(id) ON DELETE CASCADE,
+            transaction_id VARCHAR(100) NOT NULL,
+            customer_txn_count_30d INT,
+            customer_flags_30d INT,
+            customer_avg_delay_30d NUMERIC,
+            customer_avg_discount_30d NUMERIC,
+            customer_avg_refund_30d NUMERIC,
+            customer_avg_outstanding_30d NUMERIC,
+            customer_max_outstanding_30d NUMERIC,
+            customer_avg_outstanding_ratio_30d NUMERIC,
+            project_txn_count_30d INT,
+            project_flags_30d INT,
+            project_avg_demand_30d NUMERIC,
+            project_avg_outstanding_30d NUMERIC,
+            project_avg_outstanding_ratio_30d NUMERIC,
+            project_avg_refund_30d NUMERIC,
+            unit_txn_count_30d INT,
+            unit_flags_30d INT,
+            unit_owner_changes_30d INT,
+            unit_avg_outstanding_30d NUMERIC,
+            unit_avg_demand_30d NUMERIC,
+            unit_unique_customer_count_30d INT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
         """
     ]
 
     try:
         with conn.cursor() as cur:
-            # Drop the old tables to clean the schema for Option 2
+            # Drop the old tables to clean the schema
             print("[Database Schema] Resetting legacy table configurations...")
-            cur.execute("DROP TABLE IF EXISTS anomaly_results, risk_results, transactions, auditor_feedback, system_notifications CASCADE;")
+            cur.execute("DROP TABLE IF EXISTS anomaly_results, risk_results, transaction_rolling_features, transactions, auditor_feedback, system_notifications CASCADE;")
             
             for q in queries:
                 cur.execute(q)
         conn.commit()
         print("[Database Schema] Successfully initialized core tables, indexes, and triggers.")
-        return True
-        print("[Database Schema] Successfully initialized core tables and indexes (Option 2).")
         return True
     except Exception as e:
         conn.rollback()
