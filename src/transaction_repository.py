@@ -16,10 +16,10 @@ def clean_value(val, data_type=str):
     except (ValueError, TypeError):
         return None
 
-def save_transactions(conn, df):
+def save_transactions(conn, df, user_id="system_default", upload_batch_id="BAT_DEFAULT"):
     """
-    Ingests and stores transaction rows in the database using bulk insert,
-    returning the list of auto-generated serial database IDs.
+    Ingests and stores transaction rows in the database using bulk upsert (insert or update),
+    returning the list of database serial row IDs for the inserted/updated transactions.
     """
     if conn is None or df is None or len(df) == 0:
         return []
@@ -45,11 +45,18 @@ def save_transactions(conn, df):
         else:
             gap = clean_value(gap, int)
 
+        # Standardize customer_id and unit_id to 'N/A' to support Unique constraint comparisons
+        cust_id = clean_value(row.get('customer_id')) or 'N/A'
+        proj_id = clean_value(row.get('project_id')) or 'N/A'
+        unit_id = clean_value(row.get('unit_id')) or 'N/A'
+
         records_to_insert.append((
+            user_id,
+            upload_batch_id,
             txn_id,
-            clean_value(row.get('customer_id')),
-            clean_value(row.get('project_id')),
-            clean_value(row.get('unit_id')),
+            cust_id,
+            proj_id,
+            unit_id,
             clean_value(row.get('demand_date')),
             clean_value(row.get('payment_date')),
             clean_value(row.get('demand_amount'), float),
@@ -63,24 +70,42 @@ def save_transactions(conn, df):
 
     insert_query = """
         INSERT INTO transactions (
-            transaction_id, customer_id, project_id, unit_id,
+            user_id, upload_batch_id, transaction_id, customer_id, project_id, unit_id,
             demand_date, payment_date, demand_amount, collected_amount,
             outstanding_amount, discount_amount, refund_amount,
             payment_delay_days, payment_gap_days
-        ) VALUES %s;
+        ) VALUES %s
+        ON CONFLICT (user_id, transaction_id, customer_id, unit_id) 
+        DO UPDATE SET
+            upload_batch_id = EXCLUDED.upload_batch_id,
+            project_id = EXCLUDED.project_id,
+            demand_date = EXCLUDED.demand_date,
+            payment_date = EXCLUDED.payment_date,
+            demand_amount = EXCLUDED.demand_amount,
+            collected_amount = EXCLUDED.collected_amount,
+            outstanding_amount = EXCLUDED.outstanding_amount,
+            discount_amount = EXCLUDED.discount_amount,
+            refund_amount = EXCLUDED.refund_amount,
+            payment_delay_days = EXCLUDED.payment_delay_days,
+            payment_gap_days = EXCLUDED.payment_gap_days,
+            uploaded_at = CURRENT_TIMESTAMP
+        RETURNING id;
     """
 
     try:
+        ids = []
+        page_size = 1000  # Safe block size (1,000 rows * 15 columns = 15,000 parameters)
         with conn.cursor() as cur:
-            execute_values(cur, insert_query, records_to_insert)
-            # Retrieve all newly created database IDs in their exact insertion order
-            cur.execute("SELECT id FROM transactions ORDER BY id ASC;")
-            ids = [r[0] for r in cur.fetchall()]
+            for i in range(0, len(records_to_insert), page_size):
+                chunk = records_to_insert[i:i+page_size]
+                # Force execute_values to run the chunk as a single query
+                execute_values(cur, insert_query, chunk, page_size=len(chunk))
+                ids.extend([r[0] for r in cur.fetchall()])
         conn.commit()
         return ids
     except Exception as e:
         conn.rollback()
-        print(f"[Database Repo Error] Failed to bulk insert transactions: {e}")
+        print(f"[Database Repo Error] Failed to bulk upsert transactions: {e}")
         return []
 
 def get_transaction(conn, txn_id):

@@ -7,7 +7,7 @@ import pandas as pd
 # Dynamically add the parent directory (project root) to search path for safe imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-def main():
+def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batch_id=None):
     print("=========================================================================")
     print("                 OPTOxCRM FINANCE RISK RADAR SYSTEM                      ")
     print("=========================================================================")
@@ -33,22 +33,20 @@ def main():
     # Attempt database connection
     conn = db.get_connection()
     if conn:
-        print("[Orchestrator] Connected to PostgreSQL successfully. Initializing schema...")
+        print(f"[Orchestrator] Connected to PostgreSQL successfully. Initializing schema...")
         db.init_db(conn)
         
-        # Clear transactional tables before reloading to prevent double storage on run
-        print("[Database] Flushing previous runs...")
+        # Clear old transactional runs strictly for the active user (avoids wiping other users)
+        print(f"[Database] Flushing previous runs for user {user_id}...")
         try:
             with conn.cursor() as cur:
-                cur.execute("TRUNCATE TABLE transactions CASCADE;")
+                cur.execute("DELETE FROM transactions WHERE user_id = %s;", (user_id,))
             conn.commit()
         except Exception as e:
             conn.rollback()
-            print(f"Error flushing database tables: {e}")
+            print(f"Error flushing database tables for user {user_id}: {e}")
     else:
         print("[Orchestrator] Warning: PostgreSQL offline. Running in file-only fallback mode.")
-
-    csv_path = "data/sample_finance_data.csv"
 
     # Step 1: Rule Validation
     print("\n[Step 1/5] Running Hard Rules Validation Engine...")
@@ -61,17 +59,19 @@ def main():
     df = anomaly_detector.patch_transaction_ids(df_raw)
 
     # Save to Transactions Table and fetch keys
-        # Save to Transactions Table and fetch keys
     db_ids = []
     if conn:
-        print("[Database] Persisting transactions to 'transactions' table...")
-        db_ids = txn_repo.save_transactions(conn, df)
-        print(f"[Database] Successfully stored {len(db_ids)} transaction rows.")
+        import datetime
+        if not batch_id:
+            batch_id = f"BAT_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        print(f"[Database] Persisting transactions to 'transactions' table (Batch: {batch_id})...")
+        db_ids = txn_repo.save_transactions(conn, df, user_id=user_id, upload_batch_id=batch_id)
+        print(f"[Database] Successfully stored/upserted {len(db_ids)} transaction rows.")
         
         # Initialize auditor feedback records as Clear (False) by default
         import src.feedback_repository as feedback_repo
         print("[Database] Initializing auditor feedback records...")
-        feedback_repo.initialize_feedback(conn, df['transaction_id'].tolist())
+        feedback_repo.initialize_feedback(conn, db_ids)
 
     # Step 2: Anomaly Outlier Detection
     print("\n[Step 2/5] Running Statistical & ML Anomaly Detection Engines...")
@@ -108,21 +108,31 @@ def main():
     report_gen.run_report_generator()
 
     # Phase 6: Verify Historical Storage (Verify everything populated before exit)
-        # Phase 6: Verify Historical Storage (Verify everything populated before exit)
     if conn:
         print("\n[Phase 6: Verification] Auditing data storage levels...")
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) FROM transactions;")
+                cur.execute("SELECT COUNT(*) FROM transactions WHERE user_id = %s;", (user_id,))
                 t_count = cur.fetchone()[0]
-                cur.execute("SELECT COUNT(*) FROM anomaly_results;")
+                cur.execute("""
+                    SELECT COUNT(*) 
+                    FROM anomaly_results ar
+                    JOIN transactions t ON ar.transaction_row_id = t.id
+                    WHERE t.user_id = %s;
+                """, (user_id,))
                 a_count = cur.fetchone()[0]
-                cur.execute("SELECT COUNT(*) FROM risk_results;")
+                cur.execute("""
+                    SELECT COUNT(*) 
+                    FROM risk_results rr
+                    JOIN transactions t ON rr.transaction_row_id = t.id
+                    WHERE t.user_id = %s;
+                """, (user_id,))
                 r_count = cur.fetchone()[0]
             
             print("=========================================================================")
             print("                POSTGRESQL DATABASE VERIFICATION (OPTION 2)              ")
             print("=========================================================================")
+            print(f"  - User partition           : {user_id}")
             print(f"  - Table 'transactions'     : {t_count} records (Expected: {len(df)})")
             print(f"  - Table 'anomaly_results'  : {a_count} records")
             print(f"  - Table 'risk_results'     : {r_count} records (Expected: {len(df)})")

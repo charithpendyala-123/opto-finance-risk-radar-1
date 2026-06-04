@@ -41,14 +41,16 @@ def init_db(conn):
         return False
     
     queries = [
-        # Table 1: transactions (Auto-incrementing ID preserves duplicates)
+        # Table 1: transactions (Multi-tenant schema with unique constraint)
         """
         CREATE TABLE IF NOT EXISTS transactions (
             id SERIAL PRIMARY KEY,
-            transaction_id VARCHAR(100),
-            customer_id VARCHAR(100),
-            project_id VARCHAR(100),
-            unit_id VARCHAR(100),
+            user_id VARCHAR(50) NOT NULL,
+            upload_batch_id VARCHAR(50) NOT NULL,
+            transaction_id VARCHAR(100) NOT NULL,
+            customer_id VARCHAR(100) DEFAULT 'N/A',
+            project_id VARCHAR(100) DEFAULT 'N/A',
+            unit_id VARCHAR(100) DEFAULT 'N/A',
             demand_date DATE,
             payment_date DATE,
             demand_amount NUMERIC,
@@ -58,7 +60,8 @@ def init_db(conn):
             refund_amount NUMERIC,
             payment_delay_days INT,
             payment_gap_days INT,
-            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT unique_user_transaction UNIQUE (user_id, transaction_id, customer_id, unit_id)
         );
         """,
         # Table 2: anomaly_results (References transactions.id to handle ID collisions)
@@ -85,32 +88,85 @@ def init_db(conn):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """,
-        # Table 4: auditor_feedback (Logical keys for human label persistence)
+        # Table 4: auditor_feedback (Row-level human label persistence)
         """
         CREATE TABLE IF NOT EXISTS auditor_feedback (
-            transaction_id VARCHAR(100) PRIMARY KEY,
+            transaction_row_id INT PRIMARY KEY REFERENCES transactions(id) ON DELETE CASCADE,
+            transaction_id VARCHAR(100),
             fraud_label BOOLEAN,
             auditor_comments TEXT,
-            reviewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            reviewed_at TIMESTAMP
         );
         """,
-        # Index on transaction_id for rapid lookups since it is no longer the primary key
+        # Table 5: system_notifications (Audit events and SLA breach logs)
+        """
+        CREATE TABLE IF NOT EXISTS system_notifications (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(50) NOT NULL,
+            transaction_row_id INT REFERENCES transactions(id) ON DELETE CASCADE,
+            transaction_id VARCHAR(100),
+            notification_type VARCHAR(50),
+            message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            read_status BOOLEAN DEFAULT FALSE
+        );
+        """,
+        # Indexes for rapid lookups and filtering
         "CREATE INDEX IF NOT EXISTS idx_txn_id ON transactions(transaction_id);",
         "CREATE INDEX IF NOT EXISTS idx_customer ON transactions(customer_id);",
         "CREATE INDEX IF NOT EXISTS idx_project ON transactions(project_id);",
         "CREATE INDEX IF NOT EXISTS idx_unit ON transactions(unit_id);",
-        "CREATE INDEX IF NOT EXISTS idx_demand_date ON transactions(demand_date);"
+        "CREATE INDEX IF NOT EXISTS idx_demand_date ON transactions(demand_date);",
+        "CREATE INDEX IF NOT EXISTS idx_user_id ON transactions(user_id);",
+        "CREATE INDEX IF NOT EXISTS idx_batch_id ON transactions(upload_batch_id);",
+
+        # Trigger Function: Detects actual updates in amounts/dates and logs to system_notifications
+        """
+        CREATE OR REPLACE FUNCTION log_transaction_update()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            IF (OLD.demand_amount IS DISTINCT FROM NEW.demand_amount) OR
+               (OLD.collected_amount IS DISTINCT FROM NEW.collected_amount) OR
+               (OLD.outstanding_amount IS DISTINCT FROM NEW.outstanding_amount) OR
+               (OLD.payment_date IS DISTINCT FROM NEW.payment_date) THEN
+               
+               INSERT INTO system_notifications (user_id, transaction_row_id, transaction_id, notification_type, message)
+               VALUES (
+                   NEW.user_id,
+                   NEW.id,
+                   NEW.transaction_id,
+                   'VALUE_UPDATED',
+                   'Transaction values updated during import (Batch: ' || NEW.upload_batch_id || ').'
+               );
+            END IF;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        """,
+
+        # Bind Trigger to Table
+        """
+        DROP TRIGGER IF EXISTS trigger_log_transaction_update ON transactions;
+        """,
+        """
+        CREATE TRIGGER trigger_log_transaction_update
+        AFTER UPDATE ON transactions
+        FOR EACH ROW
+        EXECUTE FUNCTION log_transaction_update();
+        """
     ]
 
     try:
         with conn.cursor() as cur:
             # Drop the old tables to clean the schema for Option 2
             print("[Database Schema] Resetting legacy table configurations...")
-            cur.execute("DROP TABLE IF EXISTS anomaly_results, risk_results, transactions CASCADE;")
+            cur.execute("DROP TABLE IF EXISTS anomaly_results, risk_results, transactions, auditor_feedback, system_notifications CASCADE;")
             
             for q in queries:
                 cur.execute(q)
         conn.commit()
+        print("[Database Schema] Successfully initialized core tables, indexes, and triggers.")
+        return True
         print("[Database Schema] Successfully initialized core tables and indexes (Option 2).")
         return True
     except Exception as e:

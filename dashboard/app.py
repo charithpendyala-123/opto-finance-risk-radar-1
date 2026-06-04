@@ -9,6 +9,10 @@ import plotly.graph_objects as go
 import json
 import os
 import io
+import sys
+
+# Ensure parent directory is in python path for absolute imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PAGE STYLING & PREMIUM MATTE-CARBON DIRECTIVE
@@ -118,15 +122,15 @@ html, body, [class*="css"] {
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DATABASE LOADERS & WORKSPACE PORTABILITY (OPTION 2)
+# DATABASE LOADERS & WORKSPACE PORTABILITY
 # ─────────────────────────────────────────────────────────────────────────────
 REPORTS_DIR = r"C:\Projects\OPTOxCRM Finance Risk Radar\reports"
 if not os.path.exists(REPORTS_DIR):
     REPORTS_DIR = os.path.join(os.getcwd(), "reports")
 
-def load_database_reports():
+def load_database_reports(user_id="system_default", batch_id="All Batches"):
     """
-    Connects to PostgreSQL and retrieves the consolidated ledger,
+    Connects to PostgreSQL and retrieves the consolidated ledger for a specific user and batch,
     dynamically reconstructing executive summary statistics.
     """
     import sys
@@ -143,27 +147,38 @@ def load_database_reports():
     try:
         risk_list = []
         with conn.cursor() as cur:
-            # Query transactions joined with their risk evaluations using transaction row id
-                        # Query transactions joined with their risk evaluations and auditor feedback
+            # Query transactions joined with their risk evaluations and auditor feedback for the active user/batch
             query = """
                 SELECT 
                     t.id AS transaction_row_id, t.transaction_id, t.customer_id, t.project_id, t.unit_id,
                     t.demand_date, t.payment_date, t.demand_amount, t.collected_amount,
                     t.outstanding_amount, t.discount_amount, t.refund_amount,
-                    t.payment_delay_days, t.payment_gap_days,
+                    t.payment_delay_days, t.payment_gap_days, t.uploaded_at, t.upload_batch_id,
                     r.risk_score, r.severity, r.recommendation,
                     f.fraud_label, f.auditor_comments, f.reviewed_at
                 FROM transactions t
                 LEFT JOIN risk_results r ON t.id = r.transaction_row_id
-                LEFT JOIN auditor_feedback f ON t.transaction_id = f.transaction_id;
+                LEFT JOIN auditor_feedback f ON t.id = f.transaction_row_id
+                WHERE t.user_id = %s
             """
-            cur.execute(query)
+            
+            params = [user_id]
+            if batch_id != "All Batches":
+                query += " AND t.upload_batch_id = %s"
+                params.append(batch_id)
+                
+            cur.execute(query, params)
             rows = cur.fetchall()
             colnames = [desc[0] for desc in cur.description]
             db_txs = [dict(zip(colnames, row)) for row in rows]
             
             # Fetch all anomaly results for structural mapping
-            cur.execute("SELECT transaction_row_id, engine_name, anomaly_flag, anomaly_score, reason FROM anomaly_results;")
+            cur.execute("""
+                SELECT ar.transaction_row_id, ar.engine_name, ar.anomaly_flag, ar.anomaly_score, ar.reason 
+                FROM anomaly_results ar
+                JOIN transactions t ON ar.transaction_row_id = t.id
+                WHERE t.user_id = %s;
+            """, (user_id,))
             anom_rows = cur.fetchall()
             anom_map = {}
             for row_id, engine, flag, score, reason in anom_rows:
@@ -224,6 +239,7 @@ def load_database_reports():
                 }
 
                 risk_list.append({
+                    "transaction_row_id": tx["transaction_row_id"],
                     "transaction_id": tx["transaction_id"],
                     "customer_id": tx["customer_id"],
                     "project_id": tx["project_id"],
@@ -245,7 +261,8 @@ def load_database_reports():
                     "anomaly_details": anomaly_details,
                     "fraud_label": tx.get("fraud_label"),
                     "auditor_comments": tx.get("auditor_comments"),
-                    "reviewed_at": str(tx.get("reviewed_at")) if tx.get("reviewed_at") is not None else None
+                    "reviewed_at": str(tx.get("reviewed_at")) if tx.get("reviewed_at") is not None else None,
+                    "uploaded_at": tx.get("uploaded_at")
                 })
         
         # Dynamic recalculation of summary stats
@@ -355,74 +372,220 @@ def load_local_reports():
             
     return exec_summary, risk_list
 
-# Load live database dataset first with local files fallback
-real_summary, real_report = load_database_reports()
-db_active = True
+# ─────────────────────────────────────────────────────────────────────────────
+# GLOBAL USER CONFIG & WORKSPACE ROUTING
+# ─────────────────────────────────────────────────────────────────────────────
+active_user = "system_default"
 
-if real_summary is None or real_report is None:
+# Initialize Session States
+if "active_page" not in st.session_state:
+    st.session_state["active_page"] = "analytics"
+
+if "pipeline_run" not in st.session_state:
+    st.session_state["pipeline_run"] = False
+
+# Establish database active connection status
+db_active = True
+import src.db as db
+conn = db.get_connection()
+if conn:
+    try:
+        conn.close()
+    except Exception:
+        pass
+else:
     db_active = False
-    real_summary, real_report = load_local_reports()
+
+pipeline_run = st.session_state["pipeline_run"]
+if not pipeline_run:
+    if "pending_verdicts" in st.session_state:
+        del st.session_state["pending_verdicts"]
+active_batch = st.session_state.get("active_batch", "All Batches")
+
+# Load live database dataset or local files when page requires it
+real_summary, real_report = None, None
+if pipeline_run:
+    if db_active:
+        real_summary, real_report = load_database_reports(active_user, active_batch)
+    else:
+        real_summary, real_report = load_local_reports()
 
 if real_summary is None or real_report is None:
     real_summary = {}
     real_report = []
 
+# Fetch active notifications strictly for Auditor console
+active_notifications = []
+if st.session_state["active_page"] == "auditor" and pipeline_run and db_active:
+    conn = db.get_connection()
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                # Fetch all unread value updates from the DB
+                cur.execute("""
+                    SELECT n.id, n.transaction_id, n.message, n.created_at 
+                    FROM system_notifications n
+                    WHERE n.user_id = %s AND n.read_status = FALSE 
+                    ORDER BY n.created_at DESC;
+                """, (active_user,))
+                rows = cur.fetchall()
+                for r in rows:
+                    active_notifications.append({
+                        "id": r[0],
+                        "txn_id": r[1],
+                        "message": r[2],
+                        "type": "VALUE_UPDATED"
+                    })
+        except Exception:
+            pass
+        finally:
+            conn.close()
+
+# Dynamically compute runtime SLA alerts for Auditor console
+if st.session_state["active_page"] == "auditor":
+    import datetime
+    for tx in real_report:
+        uploaded_at = tx.get("uploaded_at")
+        verdict = tx.get("fraud_label")
+        severity = tx.get("risk_severity")
+        
+        if uploaded_at and verdict is None and severity in ["CRITICAL", "HIGH"]:
+            if isinstance(uploaded_at, str):
+                try:
+                    uploaded_dt = datetime.datetime.fromisoformat(uploaded_at.replace("Z", "+00:00"))
+                except Exception:
+                    uploaded_dt = datetime.datetime.now()
+            else:
+                uploaded_dt = uploaded_at
+                
+            now_dt = datetime.datetime.now(uploaded_dt.tzinfo) if uploaded_dt.tzinfo else datetime.datetime.now()
+            pending_days = (now_dt - uploaded_dt).days
+            if pending_days > 7:
+                active_notifications.append({
+                    "txn_id": tx["transaction_id"],
+                    "message": f"⚠️ SLA Breach: Transaction {tx['transaction_id']} (Critical) pending review for {pending_days} days.",
+                    "type": "SLA_BREACH"
+                })
+
 # Initialize session state for verdicts
-# Initialize session state for verdicts (defaulting to False/Clear if None)
-# Initialize session state for verdicts (defaulting to True/Fraud if None)
-if "pending_verdicts" not in st.session_state:
-    st.session_state["pending_verdicts"] = {
-        tx["transaction_id"]: tx.get("fraud_label") if tx.get("fraud_label") is not None else True
-        for tx in real_report
-    }
+if "pending_verdicts" not in st.session_state or not st.session_state["pending_verdicts"]:
+    st.session_state["pending_verdicts"] = {}
+    for idx, tx in enumerate(real_report):
+        row_key = tx.get("transaction_row_id")
+        if row_key is None:
+            row_key = f"{tx['transaction_id']}_{idx}"
+        st.session_state["pending_verdicts"][row_key] = tx.get("fraud_label")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SIDEBAR NAVIGATION & PORTAL ROUTING
+# PREMIUM SIDEBAR PANEL
 # ─────────────────────────────────────────────────────────────────────────────
-st.sidebar.markdown("### 🛡️ Compliance Control")
-page = st.sidebar.selectbox("Navigate Portal", ["📊 Executive Analytics", "⚖️ Auditor Feedback Console"])
+st.sidebar.markdown("""
+<div style="text-align: center; padding: 10px 0px 20px 0px;">
+    <h2 style="font-family: 'Outfit', sans-serif; font-weight: 700; margin: 0; background: linear-gradient(135deg, #F8FAFC 30%, #94A3B8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        🛡️ OPTOxCRM
+    </h2>
+    <span style="color: #94A3B8; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;">
+        Finance Risk Radar
+    </span>
+</div>
+<hr style="margin: 10px 0px 20px 0px; border-color: rgba(255, 255, 255, 0.05);">
+""", unsafe_allow_html=True)
 
-if page == "⚖️ Auditor Feedback Console":
-    # ─── AUDITOR FEEDBACK PAGE VIEW ───
-    st.markdown("""
-    <h1 class='main-title' style='user-select: text;'>
-        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="
-            vertical-align: middle; 
-            margin-right: 12px; 
-            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.65));
-            user-select: none;
-            pointer-events: none;
-        ">
-            <defs>
-                <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#60A5FA"/>
-                    <stop offset="100%" stop-color="#1D4ED8"/>
-                </linearGradient>
-                <linearGradient id="borderGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#F8FAFC"/>
-                    <stop offset="100%" stop-color="#94A3B8"/>
-                </linearGradient>
-            </defs>
-            <path d="M12 2L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 2Z" fill="url(#shieldGrad)" stroke="url(#borderGrad)" stroke-width="2" stroke-linejoin="round"/>
-            <path d="M12 3.5V21.3C16.2 20.1 19 16.2 19 11V6.2L12 3.5Z" fill="#93C5FD" opacity="0.3"/>
-        </svg>Auditor Feedback Console
-    </h1>
+st.sidebar.markdown("### 🧭 Navigation")
+
+btn_analytics_type = "primary" if st.session_state["active_page"] == "analytics" else "secondary"
+btn_auditor_type = "primary" if st.session_state["active_page"] == "auditor" else "secondary"
+
+if st.sidebar.button("📊 Executive Analytics", use_container_width=True, type=btn_analytics_type, key="sidebar_nav_analytics"):
+    st.session_state["active_page"] = "analytics"
+    st.rerun()
+
+if st.sidebar.button("⚖️ Auditor Feedback Console", use_container_width=True, type=btn_auditor_type, key="sidebar_nav_auditor"):
+    st.session_state["active_page"] = "auditor"
+    st.rerun()
+
+# Import New Ledger button when data is loaded
+if pipeline_run:
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🔄 Import New Ledger", use_container_width=True, key="sidebar_reset_pipeline"):
+        st.session_state["pipeline_run"] = False
+        st.session_state["active_batch"] = "All Batches"
+        if "pending_verdicts" in st.session_state:
+            del st.session_state["pending_verdicts"]
+        st.rerun()
+
+# Display active batch badge if pipeline has run
+if pipeline_run and active_batch:
+    st.sidebar.markdown(f"""
+    <div style="background: rgba(30, 41, 59, 0.45); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px; padding: 12px; margin-top: 15px;">
+        <span style="color: #94A3B8; font-size: 10px; font-weight: 600; text-transform: uppercase;">Active Ingest Batch</span>
+        <div style="color: #60A5FA; font-weight: 700; font-size: 13px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            📂 {active_batch}
+        </div>
+    </div>
     """, unsafe_allow_html=True)
-    db_status_badge = "🟢 PostgreSQL Connected" if db_active else "🟡 Local Files Fallback"
-    st.caption(f"Portal View: Live Compliance Audit Log Queue · Connection: {db_status_badge} · Local sandbox port 8501")
-    st.markdown("<br>", unsafe_allow_html=True)
 
+# Page routing checks
+if st.session_state["active_page"] == "auditor":
+    # ─── AUDITOR FEEDBACK PAGE VIEW ───
+    h_col1, h_col2 = st.columns([3, 1])
+    with h_col1:
+        st.markdown("""
+        <h1 class='main-title' style='user-select: text; margin: 0;'>
+            ⚖️ Auditor Feedback Console
+        </h1>
+        """, unsafe_allow_html=True)
+        db_status_badge = "🟢 PostgreSQL Connected" if db_active else "🟡 Local Files Fallback"
+        st.caption(f"Live Compliance Audit Log Queue · User: **{active_user}** · Connection: {db_status_badge}")
+        
+    with h_col2:
+        notif_count = len(active_notifications)
+        btn_label = f"🔔 Notifications ({notif_count})" if notif_count > 0 else "🔔 Notifications"
+        with st.popover(btn_label, use_container_width=True):
+            st.markdown("### 🔔 System Alert Center")
+            if not active_notifications:
+                st.info("No active notifications or SLA breaches logged.")
+            else:
+                for idx, n in enumerate(active_notifications):
+                    icon = "🔄" if n["type"] == "VALUE_UPDATED" else "⚠️"
+                    st.write(f"{icon} **{n['message']}**")
+                    st.divider()
+                
+                # Button to clear persistent database notifications
+                db_notifs = [n["id"] for n in active_notifications if n["type"] == "VALUE_UPDATED"]
+                if db_notifs and st.button("✅ Mark All as Read", key="clear_notifs"):
+                    conn = db.get_connection()
+                    if conn:
+                        try:
+                            with conn.cursor() as cur:
+                                cur.execute("UPDATE system_notifications SET read_status = TRUE WHERE id = ANY(%s);", (db_notifs,))
+                            conn.commit()
+                            st.success("Notifications marked as read!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+                        finally:
+                            conn.close()
+    st.markdown("<br>", unsafe_allow_html=True)
     # ─── STEP 1: CALCULATE COMPLIANCE METRICS ───
-    total_cnt = len(st.session_state["pending_verdicts"])
-    fraud_cnt = sum(1 for v in st.session_state["pending_verdicts"].values() if v is True)
-    clear_cnt = total_cnt - fraud_cnt
+    total_cnt = 0
+    fraud_cnt = 0
+    clear_cnt = 0
+    if "pending_verdicts" in st.session_state and pipeline_run:
+        total_cnt = len(st.session_state["pending_verdicts"])
+        fraud_cnt = sum(1 for v in st.session_state["pending_verdicts"].values() if v is True)
+        clear_cnt = total_cnt - fraud_cnt
+
+    val_total = f"{total_cnt:,}" if pipeline_run else "N/A"
+    val_fraud = f"{fraud_cnt:,}" if pipeline_run else "N/A"
+    val_clear = f"{clear_cnt:,}" if pipeline_run else "N/A"
 
     mc1, mc2, mc3 = st.columns(3)
     with mc1:
         st.markdown(f"""
         <div class="metric-card">
             <div class="metric-title">📊 Total Ledgers</div>
-            <div class="metric-value">{total_cnt:,}</div>
+            <div class="metric-value">{val_total}</div>
             <div class="metric-sub" style="color: #64748B;">Total active audit files</div>
         </div>
         """, unsafe_allow_html=True)
@@ -430,7 +593,7 @@ if page == "⚖️ Auditor Feedback Console":
         st.markdown(f"""
         <div class="metric-card">
             <div class="metric-title">🔴 Flagged Fraud</div>
-            <div class="metric-value" style="color: #F87171;">{fraud_cnt:,}</div>
+            <div class="metric-value" style="color: #F87171;">{val_fraud}</div>
             <div class="metric-sub" style="color: #EF4444;">Transactions marked as fraud</div>
         </div>
         """, unsafe_allow_html=True)
@@ -438,7 +601,7 @@ if page == "⚖️ Auditor Feedback Console":
         st.markdown(f"""
         <div class="metric-card">
             <div class="metric-title">🟢 Clear Status</div>
-            <div class="metric-value" style="color: #34D399;">{clear_cnt:,}</div>
+            <div class="metric-value" style="color: #34D399;">{val_clear}</div>
             <div class="metric-sub" style="color: #10B981;">Clean transaction records</div>
         </div>
         """, unsafe_allow_html=True)
@@ -456,9 +619,12 @@ if page == "⚖️ Auditor Feedback Console":
 
     # Apply filters
     filtered_report = []
-    for tx in real_report:
+    for idx, tx in enumerate(real_report):
         txn_id = tx["transaction_id"]
-        verdict = st.session_state["pending_verdicts"].get(txn_id)
+        row_id = tx.get("transaction_row_id")
+        if row_id is None:
+            row_id = f"{txn_id}_{idx}"
+        verdict = st.session_state["pending_verdicts"].get(row_id)
         
         # Search ID
         if search_txn and search_txn.upper() not in txn_id.upper():
@@ -516,7 +682,10 @@ if page == "⚖️ Auditor Feedback Console":
     page_records = filtered_report[start_idx:end_idx]
 
     if not page_records:
-        st.info("No transactions match the selected filters.")
+        if not pipeline_run:
+            st.info("💡 Please upload a financial ledger CSV under Executive Analytics to start auditing.")
+        else:
+            st.info("No transactions match the selected filters.")
     else:
         # Table layout
         st.markdown("<br>", unsafe_allow_html=True)
@@ -529,12 +698,39 @@ if page == "⚖️ Auditor Feedback Console":
         with h_col6: st.markdown("**Action Toggle**")
         st.markdown("<hr style='margin: 5px 0px; border-color: rgba(255,255,255,0.15);'>", unsafe_allow_html=True)
 
-        for tx in page_records:
+        for idx, tx in enumerate(page_records):
             txn_id = tx["transaction_id"]
+            global_idx = start_idx + idx
+            row_id = tx.get("transaction_row_id")
+            if row_id is None:
+                row_id = f"{txn_id}_{global_idx}"
             cust_id = tx["customer_id"] or "N/A"
             risk_score = tx["risk_score"]
             severity = tx["risk_severity"]
-            verdict = st.session_state["pending_verdicts"].get(txn_id)
+            verdict = st.session_state["pending_verdicts"].get(row_id)
+
+            # --- Calculate SLA Pending Age in Days ---
+            import datetime
+            uploaded_at = tx.get("uploaded_at")
+            pending_days = 0
+            is_sla_breach = False
+
+            if uploaded_at:
+                if isinstance(uploaded_at, str):
+                    try:
+                        clean_ts = uploaded_at.replace("Z", "+00:00")
+                        uploaded_dt = datetime.datetime.fromisoformat(clean_ts)
+                    except Exception:
+                        uploaded_dt = datetime.datetime.now()
+                else:
+                    uploaded_dt = uploaded_at
+                
+                now_dt = datetime.datetime.now(uploaded_dt.tzinfo) if uploaded_dt.tzinfo else datetime.datetime.now()
+                pending_days = (now_dt - uploaded_dt).days
+                
+                # SLA Breach: High/Critical severity and unreviewed for more than 7 days
+                if verdict is None and pending_days > 7 and severity in ["CRITICAL", "HIGH"]:
+                    is_sla_breach = True
 
             r_col1, r_col2, r_col3, r_col4, r_col5, r_col6 = st.columns([1.5, 1.5, 1.2, 1.2, 2.0, 2.0])
 
@@ -547,26 +743,54 @@ if page == "⚖️ Auditor Feedback Console":
             with r_col4:
                 color = "#EF4444" if severity == "CRITICAL" else "#F97316" if severity == "HIGH" else "#EAB308" if severity == "MEDIUM" else "#10B981"
                 st.markdown(f"<span style='color: {color}; font-weight: 600;'>{severity}</span>", unsafe_allow_html=True)
+            
             with r_col5:
+                # Check if this row ID has an active "value updated" alert
+                has_value_update = any(n["txn_id"] == txn_id and n["type"] == "VALUE_UPDATED" for n in active_notifications)
+                update_badge = " <span style='background-color:#1E293B; border: 1px solid #3B82F6; color:#60A5FA; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:600;'>🔄 Updated</span>" if has_value_update else ""
+
                 if verdict is True:
-                    st.markdown("🔴 <span style='color: #F87171; font-weight: 600;'>Flagged Fraud</span>", unsafe_allow_html=True)
+                    st.markdown(f"🔴 <span style='color: #F87171; font-weight: 600;'>Flagged Fraud</span>{update_badge}", unsafe_allow_html=True)
+                elif verdict is False:
+                    st.markdown(f"🟢 <span style='color: #34D399; font-weight: 600;'>Clear</span>{update_badge}", unsafe_allow_html=True)
                 else:
-                    st.markdown("🟢 <span style='color: #34D399; font-weight: 600;'>Clear</span>", unsafe_allow_html=True)
+                    if is_sla_breach:
+                        st.markdown(f"⚠️ <span style='color: #EF4444; font-weight: 700; text-shadow: 0 0 8px rgba(239,68,68,0.3);'>SLA BREACH ({pending_days}d)</span>{update_badge}", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"⏳ <span style='color: #808495;'>Pending ({pending_days}d)</span>{update_badge}", unsafe_allow_html=True)
+            
             with r_col6:
                 if verdict is True:
-                    if st.button("✅ Remove Flag", key=f"unflag_{txn_id}", type="primary", use_container_width=True):
-                        st.session_state["pending_verdicts"][txn_id] = False
+                    if st.button("✅ Mark Clear", key=f"clear_{row_id}", type="primary", use_container_width=True):
+                        st.session_state["pending_verdicts"][row_id] = False
                         st.rerun()
-                else:
-                    if st.button("🚨 Flag Fraud", key=f"flag_{txn_id}", type="secondary", use_container_width=True):
-                        st.session_state["pending_verdicts"][txn_id] = True
+                elif verdict is False:
+                    if st.button("🚨 Flag Fraud", key=f"flag_{row_id}", type="secondary", use_container_width=True):
+                        st.session_state["pending_verdicts"][row_id] = True
                         st.rerun()
+                else:  # verdict is None (Pending)
+                    col_btn1, col_btn2 = st.columns(2)
+                    with col_btn1:
+                        # Using row_id to guarantee unique Streamlit widget keys
+                        if st.button("🚨 Flag", key=f"flag_{row_id}", type="secondary", use_container_width=True):
+                            st.session_state["pending_verdicts"][row_id] = True
+                            st.rerun()
+                    with col_btn2:
+                        if st.button("✅ Clear", key=f"clear_{row_id}", type="secondary", use_container_width=True):
+                            st.session_state["pending_verdicts"][row_id] = False
+                            st.rerun()
 
             st.markdown("<hr style='margin: 3px 0px; border-color: rgba(255,255,255,0.05);'>", unsafe_allow_html=True)
 
         # ─── STEP 4: SUBMIT PANEL ───
-        page_txn_ids = [tx["transaction_id"] for tx in page_records]
-        page_verdicts = {tid: st.session_state["pending_verdicts"].get(tid) for tid in page_txn_ids}
+        page_row_ids = []
+        for idx, tx in enumerate(page_records):
+            rid = tx.get("transaction_row_id")
+            if rid is None:
+                global_idx = start_idx + idx
+                rid = f"{tx['transaction_id']}_{global_idx}"
+            page_row_ids.append(rid)
+        page_verdicts = {rid: st.session_state["pending_verdicts"].get(rid) for rid in page_row_ids}
         flagged_count = sum(1 for v in page_verdicts.values() if v is True)
 
         st.markdown("<br>", unsafe_allow_html=True)
@@ -584,8 +808,8 @@ if page == "⚖️ Auditor Feedback Console":
                 conn = db.get_connection()
                 if conn:
                     success_count = 0
-                    for tid, verdict in page_verdicts.items():
-                        if feedback_repo.save_feedback(conn, tid, verdict, f"Reviewed via portal (Page {st.session_state['current_page_idx']})"):
+                    for rid, verdict in page_verdicts.items():
+                        if feedback_repo.save_feedback(conn, rid, verdict, f"Reviewed via portal (Page {st.session_state['current_page_idx']})"):
                             success_count += 1
                     conn.close()
                     # Force database reload by deleting session state
@@ -598,6 +822,67 @@ if page == "⚖️ Auditor Feedback Console":
                     st.error("Error: Failed to connect to PostgreSQL database.")
 
     # Halt execution here so that the original Analytics page doesn't execute
+    st.stop()
+
+# ─── EXECUTIVE ANALYTICS BLANK STATE INTERCEPT ───
+if st.session_state["active_page"] == "analytics" and not pipeline_run:
+    st.markdown("""
+    <div style="text-align: center; margin-top: 60px; margin-bottom: 40px;">
+        <h1 class='main-title' style='font-size: 45px; font-weight: 800; letter-spacing: -0.02em;'>
+            🛡️ OPTOxCRM Finance Risk Radar
+        </h1>
+        <p style='color: #94A3B8; font-size: 18px; margin-top: 10px;'>
+            Stakeholder Portal & Forensic Risk Evaluation Dashboard
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col_l, col_m, col_r = st.columns([1, 2, 1])
+    with col_m:
+        st.markdown("""
+        <div style="background: rgba(30, 41, 59, 0.45); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 30px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);">
+            <h3 style="color: #F8FAFC; font-family: 'Outfit', sans-serif; font-weight: 600; margin-bottom: 25px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;">
+                📥 Import Financial Ledger
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        custom_batch_name = st.text_input("Custom Batch Name (Mandatory):", value="", placeholder="e.g. Q2_Audit_v1", key="landing_batch_name").strip()
+        uploaded_file = st.file_uploader("Upload new financial ledger CSV:", type=["csv"], key="landing_file_uploader")
+        
+        if uploaded_file is not None:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if not custom_batch_name:
+                st.warning("⚠️ Please provide a custom batch name to trigger the ingestion pipeline.")
+                st.button("🔥 Run Risk Analysis Pipeline", type="primary", use_container_width=True, disabled=True, key="run_pipeline_btn_disabled")
+            else:
+                if st.button("🔥 Run Risk Analysis Pipeline", type="primary", use_container_width=True, key="run_pipeline_btn"):
+                    # Save uploaded file to a temporary location inside workspace
+                    temp_dir = "data/uploads"
+                    os.makedirs(temp_dir, exist_ok=True)
+                    temp_path = os.path.join(temp_dir, f"uploaded_{active_user}.csv")
+                    
+                    with open(temp_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+                    
+                    # Show loading spinner
+                    with st.spinner("Processing ledger pipeline through Hard Rules, Z-Score, IQR, Groupwise & Isolation Forest engines..."):
+                        try:
+                            import src.main as pipeline
+                            # Run the pipeline
+                            pipeline.main(user_id=active_user, csv_path=temp_path, batch_id=custom_batch_name)
+                            
+                            st.session_state["pipeline_run"] = True
+                            st.session_state["active_batch"] = custom_batch_name
+                            if "pending_verdicts" in st.session_state:
+                                del st.session_state["pending_verdicts"]
+                            
+                            st.success(f"Pipeline executed successfully for batch: {custom_batch_name}!")
+                            st.balloons()
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error running pipeline: {e}")
+    # Halt execution here so that the dashboard doesn't execute
     st.stop()
 
 # Parse values
@@ -615,37 +900,26 @@ low_count = breakdown.get("LOW", 0)
 fraud_distribution = (real_summary or {}).get("fraud_patterns") or {}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HEADER PANEL
+# HEADER PANEL FOR EXECUTIVE ANALYTICS
 # ─────────────────────────────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
-# HEADER PANEL
-# ─────────────────────────────────────────────────────────────────────────────
-st.markdown("""
-<h1 class='main-title' style='user-select: text;'>
-    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="
-        vertical-align: middle; 
-        margin-right: 12px; 
-        filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.65));
-        user-select: none;
-        pointer-events: none;
-    ">
-        <defs>
-            <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#60A5FA"/>
-                <stop offset="100%" stop-color="#1D4ED8"/>
-            </linearGradient>
-            <linearGradient id="borderGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#F8FAFC"/>
-                <stop offset="100%" stop-color="#94A3B8"/>
-            </linearGradient>
-        </defs>
-        <path d="M12 2L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 2Z" fill="url(#shieldGrad)" stroke="url(#borderGrad)" stroke-width="2" stroke-linejoin="round"/>
-        <path d="M12 3.5V21.3C16.2 20.1 19 16.2 19 11V6.2L12 3.5Z" fill="#93C5FD" opacity="0.3"/>
-    </svg>OPTOxCRM Finance Risk Radar
-</h1>
-""", unsafe_allow_html=True)
-db_status_badge = "🟢 PostgreSQL Connected" if db_active else "🟡 Local Files Fallback"
-st.caption(f"Portal View: Live Production Audit Logs · Connection: {db_status_badge} · Running locally under secure sandboxed port localhost:8501")
+h_col1, h_col2 = st.columns([3, 1])
+with h_col1:
+    st.markdown("""
+    <h1 class='main-title' style='user-select: text; margin: 0;'>
+        🛡️ OPTOxCRM Finance Risk Radar
+    </h1>
+    """, unsafe_allow_html=True)
+    db_status_badge = "🟢 PostgreSQL Connected" if db_active else "🟡 Local Files Fallback"
+    st.caption(f"Consolidated Ledger Forensics Dashboard · Batch: **{active_batch}** · Connection: {db_status_badge}")
+
+with h_col2:
+    st.markdown(f"""
+    <div style="text-align: right; padding-top: 10px;">
+        <span style="background-color: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255, 255, 255, 0.05); color: #94A3B8; font-size: 12px; padding: 6px 12px; border-radius: 20px; font-weight: 500;">
+            👤 System Default Session
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -796,8 +1070,6 @@ with c1:
     )
     
     st.plotly_chart(fig_donut, use_container_width=True, config={'displayModeBar': False})
-    
-
 
 with c2:
     st.markdown("### 📈 Fraud Pattern Frequency")
@@ -925,7 +1197,7 @@ if search_id:
             elif "gap" in desc.lower() or rule_id == "RV-08":
                 if "Sequential Gap Outlier" not in patterns_list:
                     patterns_list.append("Sequential Gap Outlier")
-            elif "missing" in desc.lower() or "blank" in desc.lower() or rule_id in ["RV-01", "RV-03", "RV-04", "RV-05"]:
+            elif "missing" in desc.lower() or rule_id in ["RV-01", "RV-03", "RV-04", "RV-05"]:
                 if "Missing Identity Anchor" not in patterns_list:
                     patterns_list.append("Missing Identity Anchor")
         
