@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 # ─────────────────────────────────────────────
 
 # How many records? Anywhere from 200 to 2000.
-NUM_RECORDS = random.randint(0,50)
+NUM_RECORDS = random.randint(0,2400)
 
 # Missing-field rates: each run picks its own
 # probability (0–100%) independently per field.
