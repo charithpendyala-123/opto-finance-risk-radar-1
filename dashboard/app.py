@@ -129,14 +129,11 @@ if not os.path.exists(REPORTS_DIR):
     REPORTS_DIR = os.path.join(os.getcwd(), "reports")
 
 def load_database_reports(user_id="system_default", batch_id="All Batches"):
-    """
-    Connects to PostgreSQL and retrieves the consolidated ledger for a specific user and batch,
-    dynamically reconstructing executive summary statistics.
-    """
     import sys
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     try:
         import src.db as db
+        import joblib
     except ImportError:
         return None, None
 
@@ -144,10 +141,18 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
     if conn is None:
         return None, None
 
+    # Load ML Model if it exists
+    ml_model = None
+    model_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "best_fraud_model.pkl")
+    if os.path.exists(model_path):
+        try:
+            ml_model = joblib.load(model_path)
+        except Exception:
+            pass
+
     try:
         risk_list = []
         with conn.cursor() as cur:
-            # Query transactions joined with their risk evaluations and auditor feedback for the active user/batch
             query = """
                 SELECT 
                     t.id AS transaction_row_id, t.transaction_id, t.customer_id, t.project_id, t.unit_id,
@@ -155,10 +160,20 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
                     t.outstanding_amount, t.discount_amount, t.refund_amount,
                     t.payment_delay_days, t.payment_gap_days, t.uploaded_at, t.upload_batch_id,
                     r.risk_score, r.severity, r.recommendation,
-                    f.fraud_label, f.auditor_comments, f.reviewed_at
+                    f.fraud_label, f.auditor_comments, f.reviewed_at,
+                    trf.customer_txn_count_30d, trf.customer_flags_30d, trf.customer_avg_delay_30d,
+                    trf.customer_avg_discount_30d, trf.customer_avg_refund_30d, trf.customer_avg_outstanding_30d,
+                    trf.customer_max_outstanding_30d, trf.customer_avg_outstanding_ratio_30d,
+                    trf.customer_refund_count_90d, trf.customer_refund_count_180d, trf.customer_total_refund_180d,
+                    trf.customer_total_refund_lifetime, trf.customer_discount_count_lifetime, trf.customer_fraud_count_lifetime,
+                    trf.project_txn_count_30d, trf.project_flags_30d, trf.project_avg_demand_30d,
+                    trf.project_avg_outstanding_30d, trf.project_avg_outstanding_ratio_30d, trf.project_avg_refund_30d,
+                    trf.unit_txn_count_30d, trf.unit_flags_30d, trf.unit_owner_changes_30d,
+                    trf.unit_avg_outstanding_30d, trf.unit_avg_demand_30d, trf.unit_unique_customer_count_30d
                 FROM transactions t
                 LEFT JOIN risk_results r ON t.id = r.transaction_row_id
                 LEFT JOIN auditor_feedback f ON t.id = f.transaction_row_id
+                LEFT JOIN transaction_rolling_features trf ON t.id = trf.transaction_row_id
                 WHERE t.user_id = %s
             """
             
@@ -172,7 +187,6 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
             colnames = [desc[0] for desc in cur.description]
             db_txs = [dict(zip(colnames, row)) for row in rows]
             
-            # Fetch all anomaly results for structural mapping
             cur.execute("""
                 SELECT ar.transaction_row_id, ar.engine_name, ar.anomaly_flag, ar.anomaly_score, ar.reason 
                 FROM anomaly_results ar
@@ -195,7 +209,6 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
                 row_id = tx["transaction_row_id"]
                 tx_anoms = anom_map.get(row_id, [])
                 
-                # Reconstruct rule engine violations list
                 violations = []
                 rule_row = next((x for x in tx_anoms if x["engine_name"] == "RuleEngine"), None)
                 if rule_row and rule_row["reason"]:
@@ -208,7 +221,6 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
                                 "description": r_desc.strip()
                             })
 
-                # Reconstruct anomaly sub-engine details
                 z_row = next((x for x in tx_anoms if x["engine_name"] == "ZScore"), None)
                 iqr_row = next((x for x in tx_anoms if x["engine_name"] == "IQR"), None)
                 gw_row = next((x for x in tx_anoms if x["engine_name"] == "Groupwise"), None)
@@ -238,6 +250,75 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
                     "isolation_forest_reason": if_row["reason"] if if_row else None
                 }
 
+                # Construct ML Prediction Probability
+                ml_prob = None
+                if ml_model:
+                    try:
+                        features = {
+                            'demand_amount': float(tx['demand_amount']) if tx['demand_amount'] is not None else 0.0,
+                            'collected_amount': float(tx['collected_amount']) if tx['collected_amount'] is not None else 0.0,
+                            'outstanding_amount': float(tx['outstanding_amount']) if tx['outstanding_amount'] is not None else 0.0,
+                            'discount_amount': float(tx['discount_amount']) if tx['discount_amount'] is not None else 0.0,
+                            'refund_amount': float(tx['refund_amount']) if tx['refund_amount'] is not None else 0.0,
+                            'payment_delay_days': int(tx['payment_delay_days']) if tx['payment_delay_days'] is not None else 0,
+                            'payment_gap_days': int(tx['payment_gap_days']) if tx['payment_gap_days'] is not None else 0,
+                            'customer_txn_count_30d': int(tx['customer_txn_count_30d']) if tx['customer_txn_count_30d'] is not None else 0,
+                            'customer_flags_30d': int(tx['customer_flags_30d']) if tx['customer_flags_30d'] is not None else 0,
+                            'customer_avg_delay_30d': float(tx['customer_avg_delay_30d']) if tx['customer_avg_delay_30d'] is not None else 0.0,
+                            'customer_avg_discount_30d': float(tx['customer_avg_discount_30d']) if tx['customer_avg_discount_30d'] is not None else 0.0,
+                            'customer_avg_refund_30d': float(tx['customer_avg_refund_30d']) if tx['customer_avg_refund_30d'] is not None else 0.0,
+                            'customer_avg_outstanding_30d': float(tx['customer_avg_outstanding_30d']) if tx['customer_avg_outstanding_30d'] is not None else 0.0,
+                            'customer_max_outstanding_30d': float(tx['customer_max_outstanding_30d']) if tx['customer_max_outstanding_30d'] is not None else 0.0,
+                            'customer_avg_outstanding_ratio_30d': float(tx['customer_avg_outstanding_ratio_30d']) if tx['customer_avg_outstanding_ratio_30d'] is not None else 0.0,
+                            'customer_refund_count_90d': int(tx['customer_refund_count_90d']) if tx['customer_refund_count_90d'] is not None else 0,
+                            'customer_refund_count_180d': int(tx['customer_refund_count_180d']) if tx['customer_refund_count_180d'] is not None else 0,
+                            'customer_total_refund_180d': float(tx['customer_total_refund_180d']) if tx['customer_total_refund_180d'] is not None else 0.0,
+                            'customer_total_refund_lifetime': float(tx['customer_total_refund_lifetime']) if tx['customer_total_refund_lifetime'] is not None else 0.0,
+                            'customer_discount_count_lifetime': int(tx['customer_discount_count_lifetime']) if tx['customer_discount_count_lifetime'] is not None else 0,
+                            'customer_fraud_count_lifetime': int(tx['customer_fraud_count_lifetime']) if tx['customer_fraud_count_lifetime'] is not None else 0,
+                            'project_txn_count_30d': int(tx['project_txn_count_30d']) if tx['project_txn_count_30d'] is not None else 0,
+                            'project_flags_30d': int(tx['project_flags_30d']) if tx['project_flags_30d'] is not None else 0,
+                            'project_avg_demand_30d': float(tx['project_avg_demand_30d']) if tx['project_avg_demand_30d'] is not None else 0.0,
+                            'project_avg_outstanding_30d': float(tx['project_avg_outstanding_30d']) if tx['project_avg_outstanding_30d'] is not None else 0.0,
+                            'project_avg_outstanding_ratio_30d': float(tx['project_avg_outstanding_ratio_30d']) if tx['project_avg_outstanding_ratio_30d'] is not None else 0.0,
+                            'project_avg_refund_30d': float(tx['project_avg_refund_30d']) if tx['project_avg_refund_30d'] is not None else 0.0,
+                            'unit_txn_count_30d': int(tx['unit_txn_count_30d']) if tx['unit_txn_count_30d'] is not None else 0,
+                            'unit_flags_30d': int(tx['unit_flags_30d']) if tx['unit_flags_30d'] is not None else 0,
+                            'unit_owner_changes_30d': int(tx['unit_owner_changes_30d']) if tx['unit_owner_changes_30d'] is not None else 0,
+                            'unit_avg_outstanding_30d': float(tx['unit_avg_outstanding_30d']) if tx['unit_avg_outstanding_30d'] is not None else 0.0,
+                            'unit_avg_demand_30d': float(tx['unit_avg_demand_30d']) if tx['unit_avg_demand_30d'] is not None else 0.0,
+                            'unit_unique_customer_count_30d': int(tx['unit_unique_customer_count_30d']) if tx['unit_unique_customer_count_30d'] is not None else 0,
+                            
+                            # Anomaly counts
+                            'rule_violation_count': float(len(violations)),
+                            'zscore_count': 1.0 if z_row else 0.0,
+                            'iqr_count': 1.0 if iqr_row else 0.0,
+                            'groupwise_count': 1.0 if gw_row else 0.0,
+                            'isolation_forest_score': float(if_row['anomaly_score']) if (if_row and if_row['anomaly_score']) else 0.0,
+                            'total_anomaly_count': float(len(tx_anoms))
+                        }
+                        
+                        feature_cols_ordered = [
+                            'demand_amount', 'collected_amount', 'outstanding_amount', 'discount_amount', 'refund_amount',
+                            'payment_delay_days', 'payment_gap_days',
+                            'customer_txn_count_30d', 'customer_flags_30d', 'customer_avg_delay_30d',
+                            'customer_avg_discount_30d', 'customer_avg_refund_30d', 'customer_avg_outstanding_30d',
+                            'customer_max_outstanding_30d', 'customer_avg_outstanding_ratio_30d',
+                            'customer_refund_count_90d', 'customer_refund_count_180d', 'customer_total_refund_180d',
+                            'customer_total_refund_lifetime', 'customer_discount_count_lifetime', 'customer_fraud_count_lifetime',
+                            'project_txn_count_30d', 'project_flags_30d', 'project_avg_demand_30d',
+                            'project_avg_outstanding_30d', 'project_avg_outstanding_ratio_30d', 'project_avg_refund_30d',
+                            'unit_txn_count_30d', 'unit_flags_30d', 'unit_owner_changes_30d',
+                            'unit_avg_outstanding_30d', 'unit_avg_demand_30d', 'unit_unique_customer_count_30d',
+                            'rule_violation_count', 'zscore_count', 'iqr_count', 'groupwise_count', 
+                            'isolation_forest_score', 'total_anomaly_count'
+                        ]
+                        
+                        feat_df = pd.DataFrame([features])[feature_cols_ordered]
+                        ml_prob = float(ml_model.predict_proba(feat_df)[:, 1][0])
+                    except Exception:
+                        pass
+
                 risk_list.append({
                     "transaction_row_id": tx["transaction_row_id"],
                     "transaction_id": tx["transaction_id"],
@@ -262,10 +343,10 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
                     "fraud_label": tx.get("fraud_label"),
                     "auditor_comments": tx.get("auditor_comments"),
                     "reviewed_at": str(tx.get("reviewed_at")) if tx.get("reviewed_at") is not None else None,
-                    "uploaded_at": tx.get("uploaded_at")
+                    "uploaded_at": tx.get("uploaded_at"),
+                    "ml_probability": ml_prob
                 })
         
-        # Dynamic recalculation of summary stats
         total_audited = len(risk_list)
         breakdown = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
         for r in risk_list:
@@ -444,12 +525,18 @@ if st.session_state["active_page"] == "auditor" and pipeline_run and db_active:
 # Dynamically compute runtime SLA alerts for Auditor console
 if st.session_state["active_page"] == "auditor":
     import datetime
+    SLA_THRESHOLDS = {
+        "CRITICAL": 3,
+        "HIGH": 7,
+        "MEDIUM": 10
+    }
     for tx in real_report:
         uploaded_at = tx.get("uploaded_at")
         verdict = tx.get("fraud_label")
-        severity = tx.get("risk_severity")
+        severity = (tx.get("risk_severity") or "").upper()
         
-        if uploaded_at and verdict is None and severity in ["CRITICAL", "HIGH"]:
+        sla_limit = SLA_THRESHOLDS.get(severity)
+        if uploaded_at and verdict is None and sla_limit is not None:
             if isinstance(uploaded_at, str):
                 try:
                     uploaded_dt = datetime.datetime.fromisoformat(uploaded_at.replace("Z", "+00:00"))
@@ -460,10 +547,10 @@ if st.session_state["active_page"] == "auditor":
                 
             now_dt = datetime.datetime.now(uploaded_dt.tzinfo) if uploaded_dt.tzinfo else datetime.datetime.now()
             pending_days = (now_dt - uploaded_dt).days
-            if pending_days > 7:
+            if pending_days > sla_limit:
                 active_notifications.append({
                     "txn_id": tx["transaction_id"],
-                    "message": f"⚠️ SLA Breach: Transaction {tx['transaction_id']} (Critical) pending review for {pending_days} days.",
+                    "message": f"⚠️ SLA Breach: Transaction {tx['transaction_id']} ({severity.title()}) pending review for {pending_days} days.",
                     "type": "SLA_BREACH"
                 })
 
@@ -475,6 +562,30 @@ if "pending_verdicts" not in st.session_state or not st.session_state["pending_v
         if row_key is None:
             row_key = f"{tx['transaction_id']}_{idx}"
         st.session_state["pending_verdicts"][row_key] = tx.get("fraud_label")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MODAL DIALOGS
+# ─────────────────────────────────────────────────────────────────────────────
+@st.dialog("Audit Review Saved", width="small")
+def show_success_modal(message):
+    st.markdown("""
+    <div style="text-align: center; padding: 10px 0px 10px 0px;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 70px; height: 70px; border-radius: 50%; background-color: #22C55E; color: white; font-size: 35px; margin-bottom: 15px; box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);">
+            ✓
+        </div>
+        <h3 style="font-family: 'Outfit', sans-serif; font-weight: 700; color: #F8FAFC; margin-bottom: 10px;">Success</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    st.write(message)
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("OK", type="primary", use_container_width=True):
+        st.rerun()
+
+# Trigger Success Modal if flag is set in session state
+if "show_success_dialog" in st.session_state:
+    dialog_msg = st.session_state["show_success_dialog"]
+    del st.session_state["show_success_dialog"]
+    show_success_modal(dialog_msg)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PREMIUM SIDEBAR PANEL
@@ -567,20 +678,24 @@ if st.session_state["active_page"] == "auditor":
                         finally:
                             conn.close()
     st.markdown("<br>", unsafe_allow_html=True)
+
     # ─── STEP 1: CALCULATE COMPLIANCE METRICS ───
     total_cnt = 0
     fraud_cnt = 0
     clear_cnt = 0
+    pending_cnt = 0
     if "pending_verdicts" in st.session_state and pipeline_run:
         total_cnt = len(st.session_state["pending_verdicts"])
         fraud_cnt = sum(1 for v in st.session_state["pending_verdicts"].values() if v is True)
-        clear_cnt = total_cnt - fraud_cnt
+        clear_cnt = sum(1 for v in st.session_state["pending_verdicts"].values() if v is False)
+        pending_cnt = sum(1 for v in st.session_state["pending_verdicts"].values() if v is None)
 
     val_total = f"{total_cnt:,}" if pipeline_run else "N/A"
     val_fraud = f"{fraud_cnt:,}" if pipeline_run else "N/A"
     val_clear = f"{clear_cnt:,}" if pipeline_run else "N/A"
+    val_pending = f"{pending_cnt:,}" if pipeline_run else "N/A"
 
-    mc1, mc2, mc3 = st.columns(3)
+    mc1, mc2, mc3, mc4 = st.columns(4)
     with mc1:
         st.markdown(f"""
         <div class="metric-card">
@@ -603,6 +718,14 @@ if st.session_state["active_page"] == "auditor":
             <div class="metric-title">🟢 Clear Status</div>
             <div class="metric-value" style="color: #34D399;">{val_clear}</div>
             <div class="metric-sub" style="color: #10B981;">Clean transaction records</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with mc4:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">⏳ Pending Review</div>
+            <div class="metric-value" style="color: #94A3B8;">{val_pending}</div>
+            <div class="metric-sub" style="color: #64748B;">Transactions needing audit</div>
         </div>
         """, unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
@@ -714,8 +837,15 @@ if st.session_state["active_page"] == "auditor":
             uploaded_at = tx.get("uploaded_at")
             pending_days = 0
             is_sla_breach = False
-
-            if uploaded_at:
+            
+            SLA_THRESHOLDS = {
+                "CRITICAL": 3,
+                "HIGH": 7,
+                "MEDIUM": 10
+            }
+            curr_severity = (severity or "").upper()
+            sla_limit = SLA_THRESHOLDS.get(curr_severity)
+            if uploaded_at and sla_limit is not None:
                 if isinstance(uploaded_at, str):
                     try:
                         clean_ts = uploaded_at.replace("Z", "+00:00")
@@ -728,8 +858,8 @@ if st.session_state["active_page"] == "auditor":
                 now_dt = datetime.datetime.now(uploaded_dt.tzinfo) if uploaded_dt.tzinfo else datetime.datetime.now()
                 pending_days = (now_dt - uploaded_dt).days
                 
-                # SLA Breach: High/Critical severity and unreviewed for more than 7 days
-                if verdict is None and pending_days > 7 and severity in ["CRITICAL", "HIGH"]:
+                # SLA Breach: Unreviewed for more than the severity threshold
+                if verdict is None and pending_days > sla_limit:
                     is_sla_breach = True
 
             r_col1, r_col2, r_col3, r_col4, r_col5, r_col6 = st.columns([1.5, 1.5, 1.2, 1.2, 2.0, 2.0])
@@ -749,16 +879,24 @@ if st.session_state["active_page"] == "auditor":
                 has_value_update = any(n["txn_id"] == txn_id and n["type"] == "VALUE_UPDATED" for n in active_notifications)
                 update_badge = " <span style='background-color:#1E293B; border: 1px solid #3B82F6; color:#60A5FA; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:600;'>🔄 Updated</span>" if has_value_update else ""
 
+                # Construct ML Verdict Badge dynamically
+                ml_badge = ""
+                if tx.get("ml_probability") is not None:
+                    ml_prob = tx["ml_probability"]
+                    if ml_prob >= 0.5:
+                        ml_badge = " <span style='background-color:rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color:#F87171; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:600;'>🤖 ML: Fraud</span>"
+                    else:
+                        ml_badge = " <span style='background-color:rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color:#34D399; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:600;'>🤖 ML: Clean</span>"
+
                 if verdict is True:
-                    st.markdown(f"🔴 <span style='color: #F87171; font-weight: 600;'>Flagged Fraud</span>{update_badge}", unsafe_allow_html=True)
+                    st.markdown(f"🔴 <span style='color: #F87171; font-weight: 600;'>Flagged Fraud</span>{update_badge}{ml_badge}", unsafe_allow_html=True)
                 elif verdict is False:
-                    st.markdown(f"🟢 <span style='color: #34D399; font-weight: 600;'>Clear</span>{update_badge}", unsafe_allow_html=True)
+                    st.markdown(f"🟢 <span style='color: #34D399; font-weight: 600;'>Clear</span>{update_badge}{ml_badge}", unsafe_allow_html=True)
                 else:
                     if is_sla_breach:
-                        st.markdown(f"⚠️ <span style='color: #EF4444; font-weight: 700; text-shadow: 0 0 8px rgba(239,68,68,0.3);'>SLA BREACH ({pending_days}d)</span>{update_badge}", unsafe_allow_html=True)
+                        st.markdown(f"⚠️ <span style='color: #EF4444; font-weight: 700; text-shadow: 0 0 8px rgba(239,68,68,0.3);'>SLA BREACH ({pending_days}d)</span>{update_badge}{ml_badge}", unsafe_allow_html=True)
                     else:
-                        st.markdown(f"⏳ <span style='color: #808495;'>Pending ({pending_days}d)</span>{update_badge}", unsafe_allow_html=True)
-            
+                        st.markdown(f"⏳ <span style='color: #808495;'>Pending ({pending_days}d)</span>{update_badge}{ml_badge}", unsafe_allow_html=True)
             with r_col6:
                 if verdict is True:
                     if st.button("✅ Mark Clear", key=f"clear_{row_id}", type="primary", use_container_width=True):
@@ -809,14 +947,31 @@ if st.session_state["active_page"] == "auditor":
                 if conn:
                     success_count = 0
                     for rid, verdict in page_verdicts.items():
-                        if feedback_repo.save_feedback(conn, rid, verdict, f"Reviewed via portal (Page {st.session_state['current_page_idx']})"):
-                            success_count += 1
+                        if verdict is not None:
+                            if feedback_repo.save_feedback(conn, rid, verdict, f"Reviewed via portal (Page {st.session_state['current_page_idx']})"):
+                                success_count += 1
                     conn.close()
+                    
+                    # --- AUTOMATIC ML TRAINING TRIGGER ---
+                    train_status = ""
+                    if success_count > 0:
+                        try:
+                            import src.train_model as trainer
+                            trained = trainer.run_model_training(user_id=active_user)
+                            if trained:
+                                train_status = " and successfully trained the ML model!"
+                            else:
+                                train_status = " but ML training was skipped (requires both classes and 50% coverage)."
+                        except Exception as e:
+                            train_status = f" but ML training failed: {e}"
+                    
+                    # Store success message in session state to trigger the modal dialog on reload
+                    st.session_state["show_success_dialog"] = f"Successfully saved {success_count} reviews to PostgreSQL{train_status}"
+                    
                     # Force database reload by deleting session state
                     if "pending_verdicts" in st.session_state:
                         del st.session_state["pending_verdicts"]
-                    st.success(f"Successfully saved page reviews to the PostgreSQL database!")
-                    st.balloons()
+                    
                     st.rerun()
                 else:
                     st.error("Error: Failed to connect to PostgreSQL database.")
@@ -868,7 +1023,9 @@ if st.session_state["active_page"] == "analytics" and not pipeline_run:
                     # Show loading spinner
                     with st.spinner("Processing ledger pipeline through Hard Rules, Z-Score, IQR, Groupwise & Isolation Forest engines..."):
                         try:
+                            import importlib
                             import src.main as pipeline
+                            importlib.reload(pipeline)
                             # Run the pipeline
                             pipeline.main(user_id=active_user, csv_path=temp_path, batch_id=custom_batch_name)
                             
@@ -878,7 +1035,6 @@ if st.session_state["active_page"] == "analytics" and not pipeline_run:
                                 del st.session_state["pending_verdicts"]
                             
                             st.success(f"Pipeline executed successfully for batch: {custom_batch_name}!")
-                            st.balloons()
                             st.rerun()
                         except Exception as e:
                             st.error(f"Error running pipeline: {e}")
@@ -1291,7 +1447,7 @@ with e3:
         with open(txt_path, 'r', encoding='utf-8') as f:
             summary_txt = f.read()
     else:
-        summary_txt = f"OPTOxCRM Finance Risk Report\nTotal Audited: {total_audited}\nTotal Flagged: {total_flagged}"
+        summary_txt = f"OPTOxCRM Finance Risk Radar\nTotal Audited: {total_audited}\nTotal Flagged: {total_flagged}"
         
     st.download_button(
         label="📥 Download Executive Summary (.txt)",

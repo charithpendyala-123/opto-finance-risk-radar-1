@@ -134,8 +134,16 @@ def save_anomaly_results(conn, anomalies, violations_df, db_ids, df):
                 "; ".join(reasons)
             ))
 
-    if not records_to_insert:
-        return 0
+        if not records_to_insert:
+            return 0
+
+    # Deduplicate unique records to prevent ON CONFLICT DO UPDATE duplication error
+    seen = {}
+    for r in records_to_insert:
+        # Key is (transaction_row_id, engine_name)
+        key = (r[0], r[2])
+        seen[key] = r
+    unique_records = list(seen.values())
 
     upsert_query = """
         INSERT INTO anomaly_results (transaction_row_id, transaction_id, engine_name, anomaly_flag, anomaly_score, reason)
@@ -148,9 +156,9 @@ def save_anomaly_results(conn, anomalies, violations_df, db_ids, df):
 
     try:
         with conn.cursor() as cur:
-            execute_values(cur, upsert_query, records_to_insert)
+            execute_values(cur, upsert_query, unique_records)
         conn.commit()
-        return len(records_to_insert)
+        return len(unique_records)
     except Exception as e:
         conn.rollback()
         print(f"[Database Repo Error] Failed to save anomaly results: {e}")

@@ -31,21 +31,44 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
         print("Please ensure your working directory is set to the project root.")
         return
 
+        # Initialize batch_id early
+    import datetime
+    if not batch_id:
+        batch_id = f"BAT_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
     # Attempt database connection
     conn = db.get_connection()
+    backup_reviews = []
     if conn:
         print(f"[Orchestrator] Connected to PostgreSQL successfully. Initializing schema...")
         db.init_db(conn)
         
-        # Clear old transactional runs strictly for the active user (avoids wiping other users)
-        print(f"[Database] Flushing previous runs for user {user_id}...")
+        # Backup human auditor reviews for this specific batch before flushing
+        print(f"[Database] Backing up existing human reviews for batch {batch_id}...")
         try:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM transactions WHERE user_id = %s;", (user_id,))
-            conn.commit()
+                cur.execute("""
+                    SELECT t.transaction_id, t.customer_id, t.unit_id, af.fraud_label, af.auditor_comments
+                    FROM auditor_feedback af
+                    JOIN transactions t ON af.transaction_row_id = t.id
+                    WHERE t.user_id = %s AND t.upload_batch_id = %s AND af.fraud_label IS NOT NULL;
+                """, (user_id, batch_id))
+                backup_reviews = cur.fetchall()
+                print(f"[Database] Backed up {len(backup_reviews)} human reviews.")
         except Exception as e:
-            conn.rollback()
-            print(f"Error flushing database tables for user {user_id}: {e}")
+            print(f"Warning: Failed to backup reviews: {e}")
+            
+        # Flush ONLY the active batch rows (keeps other CSV uploads intact)
+                # [Disabled to keep reviews permanently]
+        # print(f"[Database] Flushing previous runs for batch {batch_id}...")
+        # try:
+        #     with conn.cursor() as cur:
+        #         cur.execute("DELETE FROM transactions WHERE user_id = %s AND upload_batch_id = %s;", (user_id, batch_id))
+        #     conn.commit()
+        # except Exception as e:
+        #     conn.rollback()
+        #     print(f"Error flushing batch {batch_id}: {e}")
+        print("[Database] Ingesting in upsert mode. Old reviews will be preserved in-place.")
     else:
         print("[Orchestrator] Warning: PostgreSQL offline. Running in file-only fallback mode.")
 
@@ -73,6 +96,33 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
         import src.feedback_repository as feedback_repo
         print("[Database] Initializing auditor feedback records...")
         feedback_repo.initialize_feedback(conn, db_ids)
+
+        # Restore backed up human reviews by mapping them to new transaction IDs
+        if backup_reviews:
+            print(f"[Database] Restoring human reviews for batch {batch_id}...")
+            try:
+                with conn.cursor() as cur:
+                    for txn_id, cust_id, unit_id, label, comments in backup_reviews:
+                        cur.execute("""
+                            SELECT id FROM transactions 
+                            WHERE user_id = %s AND upload_batch_id = %s AND transaction_id = %s AND customer_id = %s AND unit_id = %s;
+                        """, (user_id, batch_id, txn_id, cust_id, unit_id))
+                        row = cur.fetchone()
+                        if row:
+                            new_row_id = row[0]
+                            cur.execute("""
+                                INSERT INTO auditor_feedback (transaction_row_id, transaction_id, fraud_label, auditor_comments, reviewed_at)
+                                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+                                ON CONFLICT (transaction_row_id) DO UPDATE SET
+                                    fraud_label = EXCLUDED.fraud_label,
+                                    auditor_comments = EXCLUDED.auditor_comments,
+                                    reviewed_at = CURRENT_TIMESTAMP;
+                            """, (new_row_id, txn_id, label, comments))
+                conn.commit()
+                print(f"[Database] Successfully restored {len(backup_reviews)} auditor reviews.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Warning: Failed to restore reviews: {e}")
 
     # Step 2: Anomaly Outlier Detection
     print("\n[Step 2/5] Running Statistical & ML Anomaly Detection Engines...")
@@ -148,20 +198,22 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
                 """, (user_id,))
                 trf_count = cur.fetchone()[0]  # <-- ADD THIS QUERY
             
+            expected_count = len(set(db_ids)) if db_ids else 0
+            
             print("=========================================================================")
             print("                POSTGRESQL DATABASE VERIFICATION                         ")
             print("=========================================================================")
             print(f"  - User partition           : {user_id}")
-            print(f"  - Table 'transactions'     : {t_count} records (Expected: {len(df)})")
+            print(f"  - Table 'transactions'     : {t_count} records (Expected: {expected_count})")
             print(f"  - Table 'anomaly_results'  : {a_count} records")
-            print(f"  - Table 'risk_results'     : {r_count} records (Expected: {len(df)})")
-            print(f"  - Table 'rolling_features' : {trf_count} records (Expected: {len(df)})") # <-- ADD THIS LINE
+            print(f"  - Table 'risk_results'     : {r_count} records (Expected: {expected_count})")
+            print(f"  - Table 'rolling_features' : {trf_count} records (Expected: {expected_count})")
             print("=========================================================================")
             
-            if t_count == len(df) and r_count == len(df):
-                print(f"[Verification Result] PASS: All {len(df)} records stored successfully.")
+            if t_count == expected_count and r_count == expected_count:
+                print(f"[Verification Result] PASS: All {expected_count} unique records stored successfully.")
             else:
-                print(f"[Verification Result] WARNING: Stored counts ({t_count}) deviate from raw row dimensions ({len(df)}).")
+                print(f"[Verification Result] WARNING: Stored counts ({t_count}) deviate from expected unique records ({expected_count}).")
         except Exception as e:
             print(f"[Verification Result] Error running checks: {e}")
         finally:

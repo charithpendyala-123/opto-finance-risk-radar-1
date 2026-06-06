@@ -42,6 +42,7 @@ def init_db(conn):
     
     queries = [
         # Table 1: transactions (Multi-tenant schema with unique constraint)
+                # Table 1: transactions (Multi-tenant schema with unique constraint)
         """
         CREATE TABLE IF NOT EXISTS transactions (
             id SERIAL PRIMARY KEY,
@@ -61,7 +62,7 @@ def init_db(conn):
             payment_delay_days INT,
             payment_gap_days INT,
             uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            CONSTRAINT unique_user_transaction UNIQUE (user_id, transaction_id, customer_id, unit_id)
+            CONSTRAINT unique_user_transaction UNIQUE (user_id, upload_batch_id, transaction_id, customer_id, unit_id)
         );
         """,
         # Table 2: anomaly_results (References transactions.id to handle ID collisions)
@@ -155,6 +156,7 @@ def init_db(conn):
         EXECUTE FUNCTION log_transaction_update();
         """,
         # Table 6: transaction_rolling_features (Phase 7 Rolling Window Layer)
+                # Table 6: transaction_rolling_features (Phase 7 Rolling Window Layer + Phase 7.5 updates)
         """
         CREATE TABLE IF NOT EXISTS transaction_rolling_features (
             transaction_row_id INT PRIMARY KEY REFERENCES transactions(id) ON DELETE CASCADE,
@@ -179,6 +181,13 @@ def init_db(conn):
             unit_avg_outstanding_30d NUMERIC,
             unit_avg_demand_30d NUMERIC,
             unit_unique_customer_count_30d INT,
+            -- Phase 7.5 Long-Term & Lifetime Features
+            customer_refund_count_90d INT,
+            customer_refund_count_180d INT,
+            customer_total_refund_180d NUMERIC,
+            customer_total_refund_lifetime NUMERIC,
+            customer_discount_count_lifetime INT,
+            customer_fraud_count_lifetime INT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
@@ -186,9 +195,8 @@ def init_db(conn):
 
     try:
         with conn.cursor() as cur:
-            # Drop the old tables to clean the schema
-            print("[Database Schema] Resetting legacy table configurations...")
-            cur.execute("DROP TABLE IF EXISTS anomaly_results, risk_results, transaction_rolling_features, transactions, auditor_feedback, system_notifications CASCADE;")
+            # Comment out/disable this line to stop dropping your tables on every upload:
+            # cur.execute("DROP TABLE IF EXISTS anomaly_results, risk_results, transaction_rolling_features, transactions, auditor_feedback, system_notifications CASCADE;")
             
             for q in queries:
                 cur.execute(q)

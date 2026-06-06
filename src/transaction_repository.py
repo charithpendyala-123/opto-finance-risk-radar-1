@@ -68,6 +68,13 @@ def save_transactions(conn, df, user_id="system_default", upload_batch_id="BAT_D
             gap
         ))
 
+    # Deduplicate unique records to prevent ON CONFLICT DO UPDATE duplication error
+    seen = {}
+    for r in records_to_insert:
+        key = (r[0], r[1], r[2], r[3], r[5])  # (user_id, upload_batch_id, transaction_id, customer_id, unit_id)
+        seen[key] = r
+    unique_records = list(seen.values())
+
     insert_query = """
         INSERT INTO transactions (
             user_id, upload_batch_id, transaction_id, customer_id, project_id, unit_id,
@@ -75,9 +82,8 @@ def save_transactions(conn, df, user_id="system_default", upload_batch_id="BAT_D
             outstanding_amount, discount_amount, refund_amount,
             payment_delay_days, payment_gap_days
         ) VALUES %s
-        ON CONFLICT (user_id, transaction_id, customer_id, unit_id) 
+        ON CONFLICT (user_id, upload_batch_id, transaction_id, customer_id, unit_id) 
         DO UPDATE SET
-            upload_batch_id = EXCLUDED.upload_batch_id,
             project_id = EXCLUDED.project_id,
             demand_date = EXCLUDED.demand_date,
             payment_date = EXCLUDED.payment_date,
@@ -89,20 +95,29 @@ def save_transactions(conn, df, user_id="system_default", upload_batch_id="BAT_D
             payment_delay_days = EXCLUDED.payment_delay_days,
             payment_gap_days = EXCLUDED.payment_gap_days,
             uploaded_at = CURRENT_TIMESTAMP
-        RETURNING id;
+        RETURNING id, user_id, upload_batch_id, transaction_id, customer_id, unit_id;
     """
 
     try:
-        ids = []
-        page_size = 1000  # Safe block size (1,000 rows * 15 columns = 15,000 parameters)
+        key_to_id = {}
+        page_size = 1000
         with conn.cursor() as cur:
-            for i in range(0, len(records_to_insert), page_size):
-                chunk = records_to_insert[i:i+page_size]
-                # Force execute_values to run the chunk as a single query
+            for i in range(0, len(unique_records), page_size):
+                chunk = unique_records[i:i+page_size]
                 execute_values(cur, insert_query, chunk, page_size=len(chunk))
-                ids.extend([r[0] for r in cur.fetchall()])
+                # Fetch row ID mapping to align with duplicated rows
+                for row_data in cur.fetchall():
+                    db_id, u_id, b_id, t_id, c_id, un_id = row_data
+                    key_to_id[(u_id, b_id, t_id, c_id, un_id)] = db_id
         conn.commit()
-        return ids
+        
+        # Build the final aligned list of database IDs matching the original records_to_insert list
+        aligned_ids = []
+        for r in records_to_insert:
+            key = (r[0], r[1], r[2], r[3], r[5])
+            aligned_ids.append(key_to_id.get(key))
+            
+        return aligned_ids
     except Exception as e:
         conn.rollback()
         print(f"[Database Repo Error] Failed to bulk upsert transactions: {e}")

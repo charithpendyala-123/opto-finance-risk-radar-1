@@ -1,5 +1,5 @@
 # ==============================================================================
-# OPTOxCRM FINANCE RISK RADAR - ROLLING WINDOW LAYER (PHASE 7)
+# OPTOxCRM FINANCE RISK RADAR - ROLLING WINDOW LAYER (PHASE 7 & 7.5)
 # ==============================================================================
 import os
 import sys
@@ -12,8 +12,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def run_rolling_window_pipeline(conn, user_id="system_default", batch_id=None):
     """
-    Calculates 30-day rolling window features for all transaction records of the active user.
-    Persists outcomes to the database in the 'transaction_rolling_features' table.
+    Calculates 30-day, 90-day, 180-day, and lifetime rolling window features for all 
+    transaction records of the active user. Persists outcomes to PostgreSQL.
     """
     if conn is None:
         print("[Rolling Window] Error: No database connection.")
@@ -61,10 +61,10 @@ def run_rolling_window_pipeline(conn, user_id="system_default", batch_id=None):
         unit_id = row['unit_id']
         current_date = row['demand_date_parsed']
         
-        # 30-day window boundary: [current_date - 30 days, current_date]
+        # 30-day window boundary
         window_start = current_date - pd.Timedelta(days=30)
         
-        # ─── CUSTOMER FEATURES ───
+        # ─── CUSTOMER 30D FEATURES ───
         cust_window = df[
             (df['customer_id'] == cust_id) & 
             (df['demand_date_parsed'] >= window_start) & 
@@ -80,12 +80,11 @@ def run_rolling_window_pipeline(conn, user_id="system_default", batch_id=None):
         cust_avg_outstanding = float(cust_window['outstanding_amount'].mean()) if cust_window['outstanding_amount'].notna().any() else 0.0
         cust_max_outstanding = float(cust_window['outstanding_amount'].max()) if cust_window['outstanding_amount'].notna().any() else 0.0
         
-        # Outstanding ratio = sum(outstanding) / sum(demand)
         sum_outstanding = cust_window['outstanding_amount'].sum()
         sum_demand = cust_window['demand_amount'].sum()
         cust_avg_outstanding_ratio = float(sum_outstanding / sum_demand) if sum_demand > 0 else 0.0
         
-        # ─── PROJECT FEATURES ───
+        # ─── PROJECT 30D FEATURES ───
         proj_window = df[
             (df['project_id'] == proj_id) & 
             (df['demand_date_parsed'] >= window_start) & 
@@ -102,7 +101,7 @@ def run_rolling_window_pipeline(conn, user_id="system_default", batch_id=None):
         sum_proj_demand = proj_window['demand_amount'].sum()
         proj_avg_outstanding_ratio = float(sum_proj_outstanding / sum_proj_demand) if sum_proj_demand > 0 else 0.0
         
-        # ─── UNIT FEATURES ───
+        # ─── UNIT 30D FEATURES ───
         unit_window = df[
             (df['unit_id'] == unit_id) & 
             (df['demand_date_parsed'] >= window_start) & 
@@ -115,9 +114,32 @@ def run_rolling_window_pipeline(conn, user_id="system_default", batch_id=None):
         unit_avg_demand = float(unit_window['demand_amount'].mean()) if unit_window['demand_amount'].notna().any() else 0.0
         unit_unique_customers = int(unit_window['customer_id'].nunique())
         
-        # Ownership shifts inside the 30d window
         unit_sorted = unit_window.sort_values('demand_date_parsed')
         unit_owner_changes = int((unit_sorted['customer_id'].ne(unit_sorted['customer_id'].shift()) & unit_sorted['customer_id'].shift().notna()).sum())
+        
+        # ─── CUSTOMER 90D, 180D, & LIFETIME FEATURES (Phase 7.5 updates) ───
+        cust_window_90d = df[
+            (df['customer_id'] == cust_id) & 
+            (df['demand_date_parsed'] >= current_date - pd.Timedelta(days=90)) & 
+            (df['demand_date_parsed'] <= current_date)
+        ]
+        cust_refund_count_90d = int((cust_window_90d['refund_amount'] > 0).sum())
+        
+        cust_window_180d = df[
+            (df['customer_id'] == cust_id) & 
+            (df['demand_date_parsed'] >= current_date - pd.Timedelta(days=180)) & 
+            (df['demand_date_parsed'] <= current_date)
+        ]
+        cust_refund_count_180d = int((cust_window_180d['refund_amount'] > 0).sum())
+        cust_total_refund_180d = float(cust_window_180d['refund_amount'].sum()) if cust_window_180d['refund_amount'].notna().any() else 0.0
+        
+        cust_window_lifetime = df[
+            (df['customer_id'] == cust_id) & 
+            (df['demand_date_parsed'] <= current_date)
+        ]
+        cust_total_refund_lifetime = float(cust_window_lifetime['refund_amount'].sum()) if cust_window_lifetime['refund_amount'].notna().any() else 0.0
+        cust_discount_count_lifetime = int((cust_window_lifetime['discount_amount'] > 0).sum())
+        cust_fraud_count_lifetime = int(cust_window_lifetime['is_flagged'].sum())
         
         feature_records.append((
             row_id,
@@ -141,7 +163,14 @@ def run_rolling_window_pipeline(conn, user_id="system_default", batch_id=None):
             unit_owner_changes,
             unit_avg_outstanding,
             unit_avg_demand,
-            unit_unique_customers
+            unit_unique_customers,
+            # Phase 7.5 Features
+            cust_refund_count_90d,
+            cust_refund_count_180d,
+            cust_total_refund_180d,
+            cust_total_refund_lifetime,
+            cust_discount_count_lifetime,
+            cust_fraud_count_lifetime
         ))
         
     # 2. Persist to database in bulk
@@ -154,7 +183,9 @@ def run_rolling_window_pipeline(conn, user_id="system_default", batch_id=None):
             project_txn_count_30d, project_flags_30d, project_avg_demand_30d,
             project_avg_outstanding_30d, project_avg_outstanding_ratio_30d, project_avg_refund_30d,
             unit_txn_count_30d, unit_flags_30d, unit_owner_changes_30d,
-            unit_avg_outstanding_30d, unit_avg_demand_30d, unit_unique_customer_count_30d
+            unit_avg_outstanding_30d, unit_avg_demand_30d, unit_unique_customer_count_30d,
+            customer_refund_count_90d, customer_refund_count_180d, customer_total_refund_180d,
+            customer_total_refund_lifetime, customer_discount_count_lifetime, customer_fraud_count_lifetime
         ) VALUES %s
         ON CONFLICT (transaction_row_id) DO UPDATE SET
             customer_txn_count_30d = EXCLUDED.customer_txn_count_30d,
@@ -176,7 +207,13 @@ def run_rolling_window_pipeline(conn, user_id="system_default", batch_id=None):
             unit_owner_changes_30d = EXCLUDED.unit_owner_changes_30d,
             unit_avg_outstanding_30d = EXCLUDED.unit_avg_outstanding_30d,
             unit_avg_demand_30d = EXCLUDED.unit_avg_demand_30d,
-            unit_unique_customer_count_30d = EXCLUDED.unit_unique_customer_count_30d;
+            unit_unique_customer_count_30d = EXCLUDED.unit_unique_customer_count_30d,
+            customer_refund_count_90d = EXCLUDED.customer_refund_count_90d,
+            customer_refund_count_180d = EXCLUDED.customer_refund_count_180d,
+            customer_total_refund_180d = EXCLUDED.customer_total_refund_180d,
+            customer_total_refund_lifetime = EXCLUDED.customer_total_refund_lifetime,
+            customer_discount_count_lifetime = EXCLUDED.customer_discount_count_lifetime,
+            customer_fraud_count_lifetime = EXCLUDED.customer_fraud_count_lifetime;
     """
     
     try:

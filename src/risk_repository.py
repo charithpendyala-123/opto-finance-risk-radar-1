@@ -28,6 +28,14 @@ def save_risk_results(conn, risk_list, db_ids):
             str(r.get("recommended_action", ""))
         ))
 
+        # Deduplicate unique records to prevent ON CONFLICT DO UPDATE duplication error
+    seen = {}
+    for r in records_to_insert:
+        # Key is transaction_row_id
+        key = r[0]
+        seen[key] = r
+    unique_records = list(seen.values())
+
     upsert_query = """
         INSERT INTO risk_results (transaction_row_id, transaction_id, risk_score, severity, recommendation)
         VALUES %s
@@ -39,9 +47,9 @@ def save_risk_results(conn, risk_list, db_ids):
 
     try:
         with conn.cursor() as cur:
-            execute_values(cur, upsert_query, records_to_insert)
+            execute_values(cur, upsert_query, unique_records)
         conn.commit()
-        return len(records_to_insert)
+        return len(unique_records)
     except Exception as e:
         conn.rollback()
         print(f"[Database Repo Error] Failed to bulk save risk results: {e}")
