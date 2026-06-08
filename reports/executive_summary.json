@@ -1,111 +1,100 @@
 {
     "executive_summary": {
-        "total_audited": 75,
-        "total_flagged": 75,
+        "total_audited": 70,
+        "total_flagged": 70,
         "exposure_pct": 100.0,
         "breakdown": {
-            "CRITICAL": 74,
-            "HIGH": 1,
+            "CRITICAL": 70,
+            "HIGH": 0,
             "MEDIUM": 0,
             "LOW": 0
         }
     },
     "engine_performance": {
-        "rule_violations": 75,
+        "rule_violations": 70,
         "zscore_flags": 0,
-        "iqr_flags": 2,
-        "groupwise_flags": 49,
-        "isolation_forest_flags": 14
+        "iqr_flags": 0,
+        "groupwise_flags": 8,
+        "isolation_forest_flags": 48
     },
     "financial_exposure": {
         "raw": {
-            "demand_exposure": 17242827683.0,
-            "outstanding_exposure": 15398734227.0,
-            "refund_exposure": 4574170975.0
+            "demand_exposure": 7684175.0,
+            "outstanding_exposure": 549096.0,
+            "refund_exposure": 95457.0
         },
         "formatted": {
-            "demand_exposure": "\u20b91724.28 Cr",
-            "outstanding_exposure": "\u20b91539.87 Cr",
-            "refund_exposure": "\u20b9457.42 Cr"
+            "demand_exposure": "\u20b976.84 L",
+            "outstanding_exposure": "\u20b95.49 L",
+            "refund_exposure": "\u20b995,457.00"
         }
     },
     "fraud_patterns": {
-        "High Policy Outlier: Kickback Discount": 24,
-        "Bulk System Glitch": 18,
-        "Collection Outlier": 12,
-        "Laundering Cash": 11,
-        "Phantom Billing": 8,
-        "Critical Fraud: Phantom Settlement": 7,
-        "Project Distribution Shift": 4,
-        "Demand Outlier": 3,
-        "Billing Escalation": 3,
-        "Critical Fraud: Ghost Collection": 1
+        "Billing Escalation": 8
     },
     "grouped_recommendations": {
-        "Immediate Ledger Freeze Required": 60,
-        "Senior Forensic Compliance Review": 14,
-        "AML Review Required": 1
+        "Senior Forensic Compliance Review": 70
     },
     "top_10_high_priority": [
         {
-            "transaction_id": "SYS_MISSING_ROW_51",
+            "transaction_id": "MIX006",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-27] - Future-dated payment warning. Verify post-dated check authorization schedules.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of abnormal invoice-to-payment window and Temporal Behavior"
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-06] - Identity Format Alert. Non-standard transaction ID format. Verify entry source.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency.; [RV-30] - Date anomaly. Same calendar dates but positive delay logged. Reconcile system logging triggers.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "TXN10",
+            "transaction_id": "MIX018",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-02] - Duplicate ID threat. Reconcile unit ledger balances and check for duplicate billing vouchers.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-20] - Credit Balance Flag. Negative outstanding balance. Reconcile over-collections.; [RV-35] - Multiple demand amounts logged on identical transaction ID. Reconcile invoices immediately.; [SOP-GW-AML] - Reconcile source of funds. Reconcile check deposit receipts, verify customer KYC profiles, and file anti-money laundering (AML) regulatory review.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-06] - Identity Format Alert. Non-standard transaction ID format. Verify entry source.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [SOP-GW-ESCALATION] - Inspect billing escalation patterns. Check Rate Card deviations and demand schedules.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "SYS_MISSING_ROW_49",
+            "transaction_id": "MIX033",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required."
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-06] - Identity Format Alert. Non-standard transaction ID format. Verify entry source.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "SYS_MISSING_ROW_74",
+            "transaction_id": "MIX023",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [SOP-GW-GHOST] - Audit Alert: Reconcile collected amount; check if funds are unallocated or misapplied to incorrect invoices."
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-06] - Identity Format Alert. Non-standard transaction ID format. Verify entry source.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency.; [RV-31] - Verify holiday/weekend billing authorization. Ensure invoice generation complies with bank operating hours.; [SOP-GW-ESCALATION] - Inspect billing escalation patterns. Check Rate Card deviations and demand schedules.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "TXN5",
+            "transaction_id": "MIX066",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-02] - Duplicate ID threat. Reconcile unit ledger balances and check for duplicate billing vouchers.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [RV-35] - Multiple demand amounts logged on identical transaction ID. Reconcile invoices immediately."
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-06] - Identity Format Alert. Non-standard transaction ID format. Verify entry source.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "TXN4",
+            "transaction_id": "MIX022",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-02] - Duplicate ID threat. Reconcile unit ledger balances and check for duplicate billing vouchers.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-27] - Future-dated payment warning. Verify post-dated check authorization schedules.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [RV-34] - Multiple customers linked to identical transaction. Suspend ledger to prevent double-crediting.; [RV-35] - Multiple demand amounts logged on identical transaction ID. Reconcile invoices immediately."
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-06] - Identity Format Alert. Non-standard transaction ID format. Verify entry source.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency.; [RV-31] - Verify holiday/weekend billing authorization. Ensure invoice generation complies with bank operating hours.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "SYS_MISSING_ROW_43",
+            "transaction_id": "MIX009",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-01] - Verify original booking form. Patched transaction ID assigned. Reconcile with ERP sequence logs.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-09] - Flag negative demand. Reconcile if transaction is a credit note; require director sign-off.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-15] - Refund exceeds demand. Halt payment. Verify physical sales contract pricing terms.; [RV-24] - Temporal Anomaly. Payment logged prior to demand date. Verify CRM logging latency.; [RV-32] - Verify holiday/weekend collection voucher. Confirm bank clearings and check deposit timestamps.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-06] - Identity Format Alert. Non-standard transaction ID format. Verify entry source.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [RV-31] - Verify holiday/weekend billing authorization. Ensure invoice generation complies with bank operating hours."
         },
         {
-            "transaction_id": "TXN4",
+            "transaction_id": "MIX005",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-02] - Duplicate ID threat. Reconcile unit ledger balances and check for duplicate billing vouchers.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [RV-16] - Discount exceeds demand. Halt transaction. Review unapproved manager promotion clearances.; [RV-27] - Future-dated payment warning. Verify post-dated check authorization schedules.; [RV-34] - Multiple customers linked to identical transaction. Suspend ledger to prevent double-crediting.; [RV-35] - Multiple demand amounts logged on identical transaction ID. Reconcile invoices immediately."
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-06] - Identity Format Alert. Non-standard transaction ID format. Verify entry source.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency."
         },
         {
-            "transaction_id": "TXN16",
+            "transaction_id": "MIX055",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-02] - Duplicate ID threat. Reconcile unit ledger balances and check for duplicate billing vouchers.; [RV-03] - Halt transaction. Missing Customer ID. Reconcile with CRM registration logs before payment clearance.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-14] - Over-collection Flag. Reconcile collected amount; check if refund is required.; [SOP-GW-BURST] - Reconcile automated invoicing triggers. Check sequential timestamps for billing loop glitches."
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-06] - Identity Format Alert. Non-standard transaction ID format. Verify entry source.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [SOP-ML-OUTLIER] - ML Outlier Reconciliations: Abnormal combination of financial and temporal behavior"
         },
         {
-            "transaction_id": "TXN18",
+            "transaction_id": "MIX056",
             "risk_score": 100,
             "severity": "CRITICAL",
-            "recommended_action": "IMMEDIATE LEDGER SUSPENSION! Critical identity anomalies (missing or duplicate transaction IDs) detected. Freeze the accounting sub-ledger, halt payment processing, and perform a manual database key reconciliation.; [RV-02] - Duplicate ID threat. Reconcile unit ledger balances and check for duplicate billing vouchers.; [RV-04] - Halt transaction. Missing Unit ID. Reconcile with property registry.; [RV-05] - Halt transaction. Missing Project ID. Reconcile with master project list.; [RV-27] - Future-dated payment warning. Verify post-dated check authorization schedules.; [SOP-GW-BURST] - Reconcile automated invoicing triggers. Check sequential timestamps for billing loop glitches."
+            "recommended_action": "CRITICAL COMPLIANCE THREAT (Score 100)! Multiple statistical and machine learning engines have flagged this transaction. Assign a senior forensic auditor immediately to review documentation.; [RV-06] - Identity Format Alert. Non-standard transaction ID format. Verify entry source.; [RV-07] - Identity Format Alert. Non-standard customer ID format. Perform KYC verification.; [RV-19] - Ledger mismatch: Outstanding != Demand - Collected - Discount + Refund. Reconcile manual postings.; [RV-25] - Date mismatch. payment_delay_days does not match calendar date difference. Audit trigger latency.; [SOP-GW-ESCALATION] - Inspect billing escalation patterns. Check Rate Card deviations and demand schedules."
         }
     ]
 }

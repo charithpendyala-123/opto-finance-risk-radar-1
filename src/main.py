@@ -31,7 +31,7 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
         print("Please ensure your working directory is set to the project root.")
         return
 
-        # Initialize batch_id early
+    # Initialize batch_id early
     import datetime
     if not batch_id:
         batch_id = f"BAT_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -58,16 +58,6 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
         except Exception as e:
             print(f"Warning: Failed to backup reviews: {e}")
             
-        # Flush ONLY the active batch rows (keeps other CSV uploads intact)
-                # [Disabled to keep reviews permanently]
-        # print(f"[Database] Flushing previous runs for batch {batch_id}...")
-        # try:
-        #     with conn.cursor() as cur:
-        #         cur.execute("DELETE FROM transactions WHERE user_id = %s AND upload_batch_id = %s;", (user_id, batch_id))
-        #     conn.commit()
-        # except Exception as e:
-        #     conn.rollback()
-        #     print(f"Error flushing batch {batch_id}: {e}")
         print("[Database] Ingesting in upsert mode. Old reviews will be preserved in-place.")
     else:
         print("[Orchestrator] Warning: PostgreSQL offline. Running in file-only fallback mode.")
@@ -85,9 +75,6 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
     # Save to Transactions Table and fetch keys
     db_ids = []
     if conn:
-        import datetime
-        if not batch_id:
-            batch_id = f"BAT_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         print(f"[Database] Persisting transactions to 'transactions' table (Batch: {batch_id})...")
         db_ids = txn_repo.save_transactions(conn, df, user_id=user_id, upload_batch_id=batch_id)
         print(f"[Database] Successfully stored/upserted {len(db_ids)} transaction rows.")
@@ -149,7 +136,6 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
     enriched_profiles = rec_engine.run_recommendation_engine()
 
     # Save to Risk Results Table
-        # Save to Risk Results Table
     if conn and db_ids:
         print("[Database] Persisting assessment outcomes to 'risk_results' table...")
         risk_saved = risk_repo.save_risk_results(conn, enriched_profiles, db_ids)
@@ -169,34 +155,39 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
 
     # Phase 6: Verify Historical Storage (Verify everything populated before exit)
     if conn:
-        print("\n[Phase 6: Verification] Auditing data storage levels...")
+        print("\n[Phase 6: Verification] Auditing database storage levels...")
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT COUNT(*) FROM transactions WHERE user_id = %s;", (user_id,))
+                # Query database records specifically for the active batch
+                cur.execute("SELECT COUNT(*) FROM transactions WHERE user_id = %s AND upload_batch_id = %s;", (user_id, batch_id))
                 t_count = cur.fetchone()[0]
                 cur.execute("""
                     SELECT COUNT(*) 
                     FROM anomaly_results ar
                     JOIN transactions t ON ar.transaction_row_id = t.id
-                    WHERE t.user_id = %s;
-                """, (user_id,))
+                    WHERE t.user_id = %s AND t.upload_batch_id = %s;
+                """, (user_id, batch_id))
                 a_count = cur.fetchone()[0]
                 cur.execute("""
                     SELECT COUNT(*) 
                     FROM risk_results rr
                     JOIN transactions t ON rr.transaction_row_id = t.id
-                    WHERE t.user_id = %s;
-                """, (user_id,))
+                    WHERE t.user_id = %s AND t.upload_batch_id = %s;
+                """, (user_id, batch_id))
                 r_count = cur.fetchone()[0]
                 
-                # Fetch rolling window features count
+                # Fetch rolling window features count for this batch
                 cur.execute("""
                     SELECT COUNT(*) 
                     FROM transaction_rolling_features trf
                     JOIN transactions t ON trf.transaction_row_id = t.id
-                    WHERE t.user_id = %s;
-                """, (user_id,))
-                trf_count = cur.fetchone()[0]  # <-- ADD THIS QUERY
+                    WHERE t.user_id = %s AND t.upload_batch_id = %s;
+                """, (user_id, batch_id))
+                trf_count = cur.fetchone()[0]
+                
+                # Also fetch total partition counts for information
+                cur.execute("SELECT COUNT(*) FROM transactions WHERE user_id = %s;", (user_id,))
+                total_t_count = cur.fetchone()[0]
             
             expected_count = len(set(db_ids)) if db_ids else 0
             
@@ -204,14 +195,16 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
             print("                POSTGRESQL DATABASE VERIFICATION                         ")
             print("=========================================================================")
             print(f"  - User partition           : {user_id}")
-            print(f"  - Table 'transactions'     : {t_count} records (Expected: {expected_count})")
-            print(f"  - Table 'anomaly_results'  : {a_count} records")
-            print(f"  - Table 'risk_results'     : {r_count} records (Expected: {expected_count})")
-            print(f"  - Table 'rolling_features' : {trf_count} records (Expected: {expected_count})")
+            print(f"  - Active Batch ID          : {batch_id}")
+            print(f"  - Batch 'transactions'     : {t_count} records (Expected: {expected_count})")
+            print(f"  - Batch 'anomaly_results'  : {a_count} records")
+            print(f"  - Batch 'risk_results'     : {r_count} records (Expected: {expected_count})")
+            print(f"  - Batch 'rolling_features' : {trf_count} records (Expected: {expected_count})")
+            print(f"  - Cumulative Total History : {total_t_count} records in user partition")
             print("=========================================================================")
             
             if t_count == expected_count and r_count == expected_count:
-                print(f"[Verification Result] PASS: All {expected_count} unique records stored successfully.")
+                print(f"[Verification Result] PASS: All {expected_count} unique records for batch '{batch_id}' stored successfully.")
             else:
                 print(f"[Verification Result] WARNING: Stored counts ({t_count}) deviate from expected unique records ({expected_count}).")
         except Exception as e:

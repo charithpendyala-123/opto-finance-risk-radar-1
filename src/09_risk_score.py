@@ -149,7 +149,8 @@ def run_risk_scoring(
 
     print("\n[Risk Scoring] Scoring ledger entries and computing threat indexes...")
 
-    for idx, row in df.iterrows():
+    df_records = df.to_dict('records')
+    for idx, row in enumerate(df_records):
         txn_id = row['transaction_id']
         source_row = idx + 2  # Physical CSV/Excel row
         
@@ -223,7 +224,7 @@ def run_risk_scoring(
         # IV) Cap Unified Score at 100
         score = int(min(100, max(0, score)))
 
-                # D) Categorize Risk Severity & Recommended CFO Action
+        # D) Categorize Risk Severity & Recommended CFO Action
         if score <= 24:
             severity = "LOW"
             total_low += 1
@@ -259,16 +260,11 @@ def run_risk_scoring(
             "risk_score": score,
             "risk_severity": severity,
             "recommended_action": recommended_action,
-            
             "violations_count": len(rules_violated),
-            # Defensive Dictionary Retrieval
-            "violations": [
-                {
-                    "rule_id": v.get("rule_id"),
-                    "description": v.get("rule_description", "No description available")
-                }
-                for v in rules_violated
-            ],
+            "violations": [{
+                "rule_id": v.get("rule_id"),
+                "description": v.get("description")
+            } for v in rules_violated],
             "anomaly_details": {
                 "zscore_flagged": z_flag,
                 "zscore_reason": z_reason,
@@ -278,7 +274,7 @@ def run_risk_scoring(
                 "groupwise_anomalies_count": len(gw_anomalies),
                 "groupwise_anomalies": gw_anomalies,
                 "isolation_forest_flagged": if_flag,
-                "isolation_forest_score": round(if_score, 4),
+                "isolation_forest_score": if_score,
                 "isolation_forest_reason": if_reason
             }
         }

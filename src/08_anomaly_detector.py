@@ -64,14 +64,12 @@ def patch_transaction_ids(df):
     assigned an identical virtual primary key 'SYS_MISSING_ROW_{idx+2}' at ingestion.
     """
     df_patched = df.copy()
-    patched_count = 0
-    for idx, row in df_patched.iterrows():
-        val = row.get('transaction_id')
-        row_num = idx + 2  # Physical CSV/Excel row number (0-based index + header offset)
-        if pd.isna(val) or str(val).strip() == "" or str(val).lower() == "nan":
-            df_patched.at[idx, 'transaction_id'] = f"SYS_MISSING_ROW_{row_num}"
-            patched_count += 1
-    if patched_count > 0:
+    tx_id_col = df_patched['transaction_id']
+    is_missing = tx_id_col.isna() | (tx_id_col.astype(str).str.strip() == "") | (tx_id_col.astype(str).str.lower() == "nan")
+    if is_missing.any():
+        virtual_ids = "SYS_MISSING_ROW_" + (df_patched.index + 2).astype(str)
+        df_patched.loc[is_missing, 'transaction_id'] = virtual_ids[is_missing]
+        patched_count = is_missing.sum()
         print(f"[Upstream Patch] Assigned {patched_count} virtual transaction IDs to prevent alignment gaps.")
     return df_patched
 
@@ -170,8 +168,8 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
     # ── CONSOLIDATE SUB-ENGINE OUTPUTS ──
     flagged_records = []
     
-    # Create lookup map for engineered features to keep consolidation rapid
-    engineered_map = df_engineered.set_index('transaction_id')
+    # Create lookup map for engineered features to keep consolidation rapid (O(1))
+    engineered_dict = df_engineered.drop_duplicates(subset=['transaction_id']).set_index('transaction_id').to_dict('index')
 
     total_zscore_flags = 0
     total_iqr_flags = 0
@@ -180,7 +178,8 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
 
     print("\n[Consolidation] Packaging parallel forensic reports and validating schemas...")
 
-    for idx, row in df.iterrows():
+    df_records = df.to_dict('records')
+    for idx, row in enumerate(df_records):
         txn_id = row['transaction_id']
         
         # 1. Z-Score evaluation
@@ -219,11 +218,8 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
         if_score = 0.0
         if_reason = ""
         
-        if txn_id in engineered_map.index:
-            eng_row = engineered_map.loc[txn_id]
-            # Handle duplicate index edge case silently (already validated by Rule Engine)
-            if isinstance(eng_row, pd.DataFrame):
-                eng_row = eng_row.iloc[0]
+        eng_row = engineered_dict.get(txn_id)
+        if eng_row:
             if_flagged = eng_row['if_prediction'] == -1
             if_score = float(eng_row['if_score'])
             if_reason = generate_if_reason(eng_row, thresholds) if if_flagged else ""

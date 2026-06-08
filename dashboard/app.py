@@ -1,6 +1,7 @@
 # ==============================================================================
 # OPTOxCRM FINANCE RISK RADAR - STAKEHOLDER PORTAL & FORENSIC DASHBOARD
 # ==============================================================================
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -128,12 +129,23 @@ REPORTS_DIR = r"C:\Projects\OPTOxCRM Finance Risk Radar\reports"
 if not os.path.exists(REPORTS_DIR):
     REPORTS_DIR = os.path.join(os.getcwd(), "reports")
 
+@st.cache_resource
+def load_ml_model():
+    import joblib
+    model_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "best_fraud_model.pkl")
+    if os.path.exists(model_path):
+        try:
+            return joblib.load(model_path)
+        except Exception:
+            pass
+    return None
+
+@st.cache_data(show_spinner="📊 Loading transaction reports from database...")
 def load_database_reports(user_id="system_default", batch_id="All Batches"):
     import sys
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     try:
         import src.db as db
-        import joblib
     except ImportError:
         return None, None
 
@@ -141,17 +153,10 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
     if conn is None:
         return None, None
 
-    # Load ML Model if it exists
-    ml_model = None
-    model_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "best_fraud_model.pkl")
-    if os.path.exists(model_path):
-        try:
-            ml_model = joblib.load(model_path)
-        except Exception:
-            pass
+    # Load ML Model using cached resource load
+    ml_model = load_ml_model()
 
     try:
-        risk_list = []
         with conn.cursor() as cur:
             query = """
                 SELECT 
@@ -187,12 +192,20 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
             colnames = [desc[0] for desc in cur.description]
             db_txs = [dict(zip(colnames, row)) for row in rows]
             
-            cur.execute("""
-                SELECT ar.transaction_row_id, ar.engine_name, ar.anomaly_flag, ar.anomaly_score, ar.reason 
-                FROM anomaly_results ar
-                JOIN transactions t ON ar.transaction_row_id = t.id
-                WHERE t.user_id = %s;
-            """, (user_id,))
+            if batch_id != "All Batches":
+                cur.execute("""
+                    SELECT ar.transaction_row_id, ar.engine_name, ar.anomaly_flag, ar.anomaly_score, ar.reason 
+                    FROM anomaly_results ar
+                    JOIN transactions t ON ar.transaction_row_id = t.id
+                    WHERE t.user_id = %s AND t.upload_batch_id = %s;
+                """, (user_id, batch_id))
+            else:
+                cur.execute("""
+                    SELECT ar.transaction_row_id, ar.engine_name, ar.anomaly_flag, ar.anomaly_score, ar.reason 
+                    FROM anomaly_results ar
+                    JOIN transactions t ON ar.transaction_row_id = t.id
+                    WHERE t.user_id = %s;
+                """, (user_id,))
             anom_rows = cur.fetchall()
             anom_map = {}
             for row_id, engine, flag, score, reason in anom_rows:
@@ -205,173 +218,124 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
                     "reason": reason
                 })
 
-            for tx in db_txs:
-                row_id = tx["transaction_row_id"]
-                tx_anoms = anom_map.get(row_id, [])
-                
-                violations = []
-                rule_row = next((x for x in tx_anoms if x["engine_name"] == "RuleEngine"), None)
-                if rule_row and rule_row["reason"]:
-                    parts = rule_row["reason"].split("; ")
-                    for part in parts:
-                        if "]" in part:
-                            r_id, r_desc = part.split("]", 1)
-                            violations.append({
-                                "rule_id": r_id.replace("[", "").strip(),
-                                "description": r_desc.strip()
-                            })
-
-                z_row = next((x for x in tx_anoms if x["engine_name"] == "ZScore"), None)
-                iqr_row = next((x for x in tx_anoms if x["engine_name"] == "IQR"), None)
-                gw_row = next((x for x in tx_anoms if x["engine_name"] == "Groupwise"), None)
-                if_row = next((x for x in tx_anoms if x["engine_name"] == "IsolationForest"), None)
-                
-                gw_anoms_list = []
-                if gw_row and gw_row["reason"]:
-                    gw_parts = gw_row["reason"].split("; ")
-                    for g_part in gw_parts:
-                        if "]" in g_part:
-                            case_name, case_desc = g_part.split("]", 1)
-                            gw_anoms_list.append({
-                                "case": case_name.replace("[", "").strip(),
-                                "reason": case_desc.strip()
-                            })
-
-                anomaly_details = {
-                    "zscore_flagged": z_row is not None,
-                    "zscore_reason": z_row["reason"] if z_row else None,
-                    "iqr_flagged": iqr_row is not None,
-                    "iqr_reason": iqr_row["reason"] if iqr_row else None,
-                    "groupwise_flagged": gw_row is not None,
-                    "groupwise_anomalies_count": len(gw_anoms_list),
-                    "groupwise_anomalies": gw_anoms_list,
-                    "isolation_forest_flagged": if_row is not None,
-                    "isolation_forest_score": float(if_row["anomaly_score"]) if (if_row and if_row["anomaly_score"]) else 0.0,
-                    "isolation_forest_reason": if_row["reason"] if if_row else None
-                }
-
-                # Construct ML Prediction Probability
-                ml_prob = None
-                if ml_model:
-                    try:
-                        features = {
-                            'demand_amount': float(tx['demand_amount']) if tx['demand_amount'] is not None else 0.0,
-                            'collected_amount': float(tx['collected_amount']) if tx['collected_amount'] is not None else 0.0,
-                            'outstanding_amount': float(tx['outstanding_amount']) if tx['outstanding_amount'] is not None else 0.0,
-                            'discount_amount': float(tx['discount_amount']) if tx['discount_amount'] is not None else 0.0,
-                            'refund_amount': float(tx['refund_amount']) if tx['refund_amount'] is not None else 0.0,
-                            'payment_delay_days': int(tx['payment_delay_days']) if tx['payment_delay_days'] is not None else 0,
-                            'payment_gap_days': int(tx['payment_gap_days']) if tx['payment_gap_days'] is not None else 0,
-                            'customer_txn_count_30d': int(tx['customer_txn_count_30d']) if tx['customer_txn_count_30d'] is not None else 0,
-                            'customer_flags_30d': int(tx['customer_flags_30d']) if tx['customer_flags_30d'] is not None else 0,
-                            'customer_avg_delay_30d': float(tx['customer_avg_delay_30d']) if tx['customer_avg_delay_30d'] is not None else 0.0,
-                            'customer_avg_discount_30d': float(tx['customer_avg_discount_30d']) if tx['customer_avg_discount_30d'] is not None else 0.0,
-                            'customer_avg_refund_30d': float(tx['customer_avg_refund_30d']) if tx['customer_avg_refund_30d'] is not None else 0.0,
-                            'customer_avg_outstanding_30d': float(tx['customer_avg_outstanding_30d']) if tx['customer_avg_outstanding_30d'] is not None else 0.0,
-                            'customer_max_outstanding_30d': float(tx['customer_max_outstanding_30d']) if tx['customer_max_outstanding_30d'] is not None else 0.0,
-                            'customer_avg_outstanding_ratio_30d': float(tx['customer_avg_outstanding_ratio_30d']) if tx['customer_avg_outstanding_ratio_30d'] is not None else 0.0,
-                            'customer_refund_count_90d': int(tx['customer_refund_count_90d']) if tx['customer_refund_count_90d'] is not None else 0,
-                            'customer_refund_count_180d': int(tx['customer_refund_count_180d']) if tx['customer_refund_count_180d'] is not None else 0,
-                            'customer_total_refund_180d': float(tx['customer_total_refund_180d']) if tx['customer_total_refund_180d'] is not None else 0.0,
-                            'customer_total_refund_lifetime': float(tx['customer_total_refund_lifetime']) if tx['customer_total_refund_lifetime'] is not None else 0.0,
-                            'customer_discount_count_lifetime': int(tx['customer_discount_count_lifetime']) if tx['customer_discount_count_lifetime'] is not None else 0,
-                            'customer_fraud_count_lifetime': int(tx['customer_fraud_count_lifetime']) if tx['customer_fraud_count_lifetime'] is not None else 0,
-                            'project_txn_count_30d': int(tx['project_txn_count_30d']) if tx['project_txn_count_30d'] is not None else 0,
-                            'project_flags_30d': int(tx['project_flags_30d']) if tx['project_flags_30d'] is not None else 0,
-                            'project_avg_demand_30d': float(tx['project_avg_demand_30d']) if tx['project_avg_demand_30d'] is not None else 0.0,
-                            'project_avg_outstanding_30d': float(tx['project_avg_outstanding_30d']) if tx['project_avg_outstanding_30d'] is not None else 0.0,
-                            'project_avg_outstanding_ratio_30d': float(tx['project_avg_outstanding_ratio_30d']) if tx['project_avg_outstanding_ratio_30d'] is not None else 0.0,
-                            'project_avg_refund_30d': float(tx['project_avg_refund_30d']) if tx['project_avg_refund_30d'] is not None else 0.0,
-                            'unit_txn_count_30d': int(tx['unit_txn_count_30d']) if tx['unit_txn_count_30d'] is not None else 0,
-                            'unit_flags_30d': int(tx['unit_flags_30d']) if tx['unit_flags_30d'] is not None else 0,
-                            'unit_owner_changes_30d': int(tx['unit_owner_changes_30d']) if tx['unit_owner_changes_30d'] is not None else 0,
-                            'unit_avg_outstanding_30d': float(tx['unit_avg_outstanding_30d']) if tx['unit_avg_outstanding_30d'] is not None else 0.0,
-                            'unit_avg_demand_30d': float(tx['unit_avg_demand_30d']) if tx['unit_avg_demand_30d'] is not None else 0.0,
-                            'unit_unique_customer_count_30d': int(tx['unit_unique_customer_count_30d']) if tx['unit_unique_customer_count_30d'] is not None else 0,
-                            
-                            # Anomaly counts
-                            'rule_violation_count': float(len(violations)),
-                            'zscore_count': 1.0 if z_row else 0.0,
-                            'iqr_count': 1.0 if iqr_row else 0.0,
-                            'groupwise_count': 1.0 if gw_row else 0.0,
-                            'isolation_forest_score': float(if_row['anomaly_score']) if (if_row and if_row['anomaly_score']) else 0.0,
-                            'total_anomaly_count': float(len(tx_anoms))
-                        }
-                        
-                        feature_cols_ordered = [
-                            'demand_amount', 'collected_amount', 'outstanding_amount', 'discount_amount', 'refund_amount',
-                            'payment_delay_days', 'payment_gap_days',
-                            'customer_txn_count_30d', 'customer_flags_30d', 'customer_avg_delay_30d',
-                            'customer_avg_discount_30d', 'customer_avg_refund_30d', 'customer_avg_outstanding_30d',
-                            'customer_max_outstanding_30d', 'customer_avg_outstanding_ratio_30d',
-                            'customer_refund_count_90d', 'customer_refund_count_180d', 'customer_total_refund_180d',
-                            'customer_total_refund_lifetime', 'customer_discount_count_lifetime', 'customer_fraud_count_lifetime',
-                            'project_txn_count_30d', 'project_flags_30d', 'project_avg_demand_30d',
-                            'project_avg_outstanding_30d', 'project_avg_outstanding_ratio_30d', 'project_avg_refund_30d',
-                            'unit_txn_count_30d', 'unit_flags_30d', 'unit_owner_changes_30d',
-                            'unit_avg_outstanding_30d', 'unit_avg_demand_30d', 'unit_unique_customer_count_30d',
-                            'rule_violation_count', 'zscore_count', 'iqr_count', 'groupwise_count', 
-                            'isolation_forest_score', 'total_anomaly_count'
-                        ]
-                        
-                        feat_df = pd.DataFrame([features])[feature_cols_ordered]
-                        ml_prob = float(ml_model.predict_proba(feat_df)[:, 1][0])
-                    except Exception:
-                        pass
-
-                risk_list.append({
-                    "transaction_row_id": tx["transaction_row_id"],
-                    "transaction_id": tx["transaction_id"],
-                    "customer_id": tx["customer_id"],
-                    "project_id": tx["project_id"],
-                    "unit_id": tx["unit_id"],
-                    "demand_amount": float(tx["demand_amount"]) if tx["demand_amount"] is not None else None,
-                    "collected_amount": float(tx["collected_amount"]) if tx["collected_amount"] is not None else None,
-                    "outstanding_amount": float(tx["outstanding_amount"]) if tx["outstanding_amount"] is not None else None,
-                    "discount_amount": float(tx["discount_amount"]) if tx["discount_amount"] is not None else None,
-                    "refund_amount": float(tx["refund_amount"]) if tx["refund_amount"] is not None else None,
-                    "payment_delay_days": tx["payment_delay_days"],
-                    "payment_gap_days": tx["payment_gap_days"],
-                    "demand_date": str(tx["demand_date"]) if tx["demand_date"] is not None else None,
-                    "payment_date": str(tx["payment_date"]) if tx["payment_date"] is not None else None,
-                    "risk_score": tx["risk_score"] or 0,
-                    "risk_severity": tx["severity"] or "LOW",
-                    "recommended_action": tx["recommendation"] or "",
-                    "violations_count": len(violations),
-                    "violations": violations,
-                    "anomaly_details": anomaly_details,
-                    "fraud_label": tx.get("fraud_label"),
-                    "auditor_comments": tx.get("auditor_comments"),
-                    "reviewed_at": str(tx.get("reviewed_at")) if tx.get("reviewed_at") is not None else None,
-                    "uploaded_at": tx.get("uploaded_at"),
-                    "ml_probability": ml_prob
-                })
-        
-        total_audited = len(risk_list)
+        # Single consolidated pass over transaction rows
+        total_audited = len(db_txs)
         breakdown = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
-        for r in risk_list:
-            breakdown[r["risk_severity"]] += 1
-            
-        total_flagged = breakdown["CRITICAL"] + breakdown["HIGH"] + breakdown["MEDIUM"]
-        exposure_pct = (total_flagged / total_audited * 100) if total_audited > 0 else 0.0
-        
-        outstanding_exposure = sum(r["outstanding_amount"] for r in risk_list if r["outstanding_amount"] and r["risk_severity"] != "LOW")
-        demand_exposure = sum(r["demand_amount"] for r in risk_list if r["demand_amount"] and r["risk_severity"] != "LOW")
-        refund_exposure = sum(r["refund_amount"] for r in risk_list if r["refund_amount"] and r["risk_severity"] != "LOW")
-        
-        def format_cr(val):
-            cr = val / 10000000
-            return f"₹{cr:.2f} Cr"
-
+        outstanding_exposure = 0.0
+        demand_exposure = 0.0
+        refund_exposure = 0.0
         fraud_patterns = {}
-        for r in risk_list:
+        engine_stats = {
+            "rule_violations": 0,
+            "zscore_flags": 0,
+            "iqr_flags": 0,
+            "groupwise_flags": 0,
+            "isolation_forest_flags": 0
+        }
+        rec_actions = {
+            "Immediate Ledger Freeze Required": 0,
+            "High Priority Forensic Audit": 0,
+            "Manual Reconciliation Required": 0,
+            "Senior Forensic Compliance Review": 0,
+            "AML Review Required": 0,
+            "Routine Policy Validation Check": 0
+        }
+        
+        feature_rows = []
+        risk_list = []
+        
+        for tx in db_txs:
+            row_id = tx["transaction_row_id"]
+            tx_anoms = anom_map.get(row_id, [])
+            
+            tx_anom_by_engine = {x["engine_name"]: x for x in tx_anoms}
+            
+            rule_row = tx_anom_by_engine.get("RuleEngine")
+            z_row = tx_anom_by_engine.get("ZScore")
+            iqr_row = tx_anom_by_engine.get("IQR")
+            gw_row = tx_anom_by_engine.get("Groupwise")
+            if_row = tx_anom_by_engine.get("IsolationForest")
+            
+            violations = []
+            if rule_row and rule_row["reason"]:
+                parts = rule_row["reason"].split("; ")
+                for part in parts:
+                    if "]" in part:
+                        r_id, r_desc = part.split("]", 1)
+                        violations.append({
+                            "rule_id": r_id.replace("[", "").strip(),
+                            "description": r_desc.strip()
+                        })
+            
+            gw_anoms_list = []
+            if gw_row and gw_row["reason"]:
+                gw_parts = gw_row["reason"].split("; ")
+                for g_part in gw_parts:
+                    if "]" in g_part:
+                        case_name, case_desc = g_part.split("]", 1)
+                        gw_anoms_list.append({
+                            "case": case_name.replace("[", "").strip(),
+                            "reason": case_desc.strip()
+                        })
+            
+            anomaly_details = {
+                "zscore_flagged": z_row is not None,
+                "zscore_reason": z_row["reason"] if z_row else None,
+                "iqr_flagged": iqr_row is not None,
+                "iqr_reason": iqr_row["reason"] if iqr_row else None,
+                "groupwise_flagged": gw_row is not None,
+                "groupwise_anomalies_count": len(gw_anoms_list),
+                "groupwise_anomalies": gw_anoms_list,
+                "isolation_forest_flagged": if_row is not None,
+                "isolation_forest_score": float(if_row["anomaly_score"]) if (if_row and if_row["anomaly_score"]) else 0.0,
+                "isolation_forest_reason": if_row["reason"] if if_row else None
+            }
+            
+            risk_severity = tx["severity"] or "LOW"
+            breakdown[risk_severity] += 1
+            
+            if risk_severity != "LOW":
+                if tx["outstanding_amount"] is not None:
+                    outstanding_exposure += float(tx["outstanding_amount"])
+                if tx["demand_amount"] is not None:
+                    demand_exposure += float(tx["demand_amount"])
+                if tx["refund_amount"] is not None:
+                    refund_exposure += float(tx["refund_amount"])
+            
+            if len(violations) > 0:
+                engine_stats["rule_violations"] += 1
+            if anomaly_details["zscore_flagged"]:
+                engine_stats["zscore_flags"] += 1
+            if anomaly_details["iqr_flagged"]:
+                engine_stats["iqr_flags"] += 1
+            if anomaly_details["groupwise_flagged"]:
+                engine_stats["groupwise_flags"] += 1
+            if anomaly_details["isolation_forest_flagged"]:
+                engine_stats["isolation_forest_flags"] += 1
+                
+            score = tx["risk_score"] or 0
+            if score >= 25:
+                action_text = tx["recommendation"] or ""
+                if "IMMEDIATE LEDGER SUSPENSION" in action_text:
+                    rec_actions["Immediate Ledger Freeze Required"] += 1
+                elif "HIGH PRIORITY FORENSIC AUDIT" in action_text:
+                    rec_actions["High Priority Forensic Audit"] += 1
+                elif "CRITICAL COMPLIANCE THREAT" in action_text:
+                    rec_actions["Senior Forensic Compliance Review"] += 1
+                elif "HIGH RISK COMPLIANCE ALERT" in action_text:
+                    rec_actions["Manual Reconciliation Required"] += 1
+                elif "HIGH RISK WATCHLIST" in action_text:
+                    rec_actions["AML Review Required"] += 1
+                else:
+                    rec_actions["Routine Policy Validation Check"] += 1
+            
             patterns = []
-            for g in r["anomaly_details"]["groupwise_anomalies"]:
+            for g in gw_anoms_list:
                 case = g.get("case", "")
                 if case:
                     clean = case.replace(" Flag", "").replace(" Outlier", "").strip()
                     patterns.append(clean)
-            for v in r["violations"]:
+            for v in violations:
                 desc = v.get("description", "")
                 r_id = v.get("rule_id", "")
                 if "refund" in desc.lower() or "over-collection" in desc.lower() or r_id in ["RV-14", "RV-15"]:
@@ -382,11 +346,11 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
                     patterns.append("Sequential Gap Outlier")
                 elif "missing" in desc.lower() or "blank" in desc.lower() or r_id in ["RV-01", "RV-03", "RV-04", "RV-05"]:
                     patterns.append("Missing Identity Anchor")
-            if r["anomaly_details"]["isolation_forest_flagged"]:
+            if anomaly_details["isolation_forest_flagged"]:
                 patterns.append("Isolation Forest (ML Outlier)")
-            if r["anomaly_details"]["zscore_flagged"]:
+            if anomaly_details["zscore_flagged"]:
                 patterns.append("Statistical Z-Score Outlier")
-            if r["anomaly_details"]["iqr_flagged"]:
+            if anomaly_details["iqr_flagged"]:
                 patterns.append("IQR Deviation Outlier")
             
             unique_patterns = list(set(patterns))
@@ -395,6 +359,110 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
             for p in unique_patterns:
                 fraud_patterns[p] = fraud_patterns.get(p, 0) + 1
 
+            risk_list.append({
+                "transaction_row_id": tx["transaction_row_id"],
+                "transaction_id": tx["transaction_id"],
+                "customer_id": tx["customer_id"],
+                "project_id": tx["project_id"],
+                "unit_id": tx["unit_id"],
+                "demand_amount": float(tx["demand_amount"]) if tx["demand_amount"] is not None else None,
+                "collected_amount": float(tx["collected_amount"]) if tx["collected_amount"] is not None else None,
+                "outstanding_amount": float(tx["outstanding_amount"]) if tx["outstanding_amount"] is not None else None,
+                "discount_amount": float(tx["discount_amount"]) if tx["discount_amount"] is not None else None,
+                "refund_amount": float(tx["refund_amount"]) if tx["refund_amount"] is not None else None,
+                "payment_delay_days": tx["payment_delay_days"],
+                "payment_gap_days": tx["payment_gap_days"],
+                "demand_date": str(tx["demand_date"]) if tx["demand_date"] is not None else None,
+                "payment_date": str(tx["payment_date"]) if tx["payment_date"] is not None else None,
+                "risk_score": tx["risk_score"] or 0,
+                "risk_severity": risk_severity,
+                "recommended_action": tx["recommendation"] or "",
+                "violations_count": len(violations),
+                "violations": violations,
+                "anomaly_details": anomaly_details,
+                "fraud_label": tx.get("fraud_label"),
+                "auditor_comments": tx.get("auditor_comments"),
+                "reviewed_at": str(tx.get("reviewed_at")) if tx.get("reviewed_at") is not None else None,
+                "uploaded_at": tx.get("uploaded_at"),
+                "ml_probability": None
+            })
+            
+            if ml_model:
+                feature_rows.append({
+                    'demand_amount': float(tx['demand_amount']) if tx['demand_amount'] is not None else 0.0,
+                    'collected_amount': float(tx['collected_amount']) if tx['collected_amount'] is not None else 0.0,
+                    'outstanding_amount': float(tx['outstanding_amount']) if tx['outstanding_amount'] is not None else 0.0,
+                    'discount_amount': float(tx['discount_amount']) if tx['discount_amount'] is not None else 0.0,
+                    'refund_amount': float(tx['refund_amount']) if tx['refund_amount'] is not None else 0.0,
+                    'payment_delay_days': int(tx['payment_delay_days']) if tx['payment_delay_days'] is not None else 0,
+                    'payment_gap_days': int(tx['payment_gap_days']) if tx['payment_gap_days'] is not None else 0,
+                    'customer_txn_count_30d': int(tx['customer_txn_count_30d']) if tx['customer_txn_count_30d'] is not None else 0,
+                    'customer_flags_30d': int(tx['customer_flags_30d']) if tx['customer_flags_30d'] is not None else 0,
+                    'customer_avg_delay_30d': float(tx['customer_avg_delay_30d']) if tx['customer_avg_delay_30d'] is not None else 0.0,
+                    'customer_avg_discount_30d': float(tx['customer_avg_discount_30d']) if tx['customer_avg_discount_30d'] is not None else 0.0,
+                    'customer_avg_refund_30d': float(tx['customer_avg_refund_30d']) if tx['customer_avg_refund_30d'] is not None else 0.0,
+                    'customer_avg_outstanding_30d': float(tx['customer_avg_outstanding_30d']) if tx['customer_avg_outstanding_30d'] is not None else 0.0,
+                    'customer_max_outstanding_30d': float(tx['customer_max_outstanding_30d']) if tx['customer_max_outstanding_30d'] is not None else 0.0,
+                    'customer_avg_outstanding_ratio_30d': float(tx['customer_avg_outstanding_ratio_30d']) if tx['customer_avg_outstanding_ratio_30d'] is not None else 0.0,
+                    'customer_refund_count_90d': int(tx['customer_refund_count_90d']) if tx['customer_refund_count_90d'] is not None else 0,
+                    'customer_refund_count_180d': int(tx['customer_refund_count_180d']) if tx['customer_refund_count_180d'] is not None else 0,
+                    'customer_total_refund_180d': float(tx['customer_total_refund_180d']) if tx['customer_total_refund_180d'] is not None else 0.0,
+                    'customer_total_refund_lifetime': float(tx['customer_total_refund_lifetime']) if tx['customer_total_refund_lifetime'] is not None else 0.0,
+                    'customer_discount_count_lifetime': int(tx['customer_discount_count_lifetime']) if tx['customer_discount_count_lifetime'] is not None else 0,
+                    'customer_fraud_count_lifetime': int(tx['customer_fraud_count_lifetime']) if tx['customer_fraud_count_lifetime'] is not None else 0,
+                    'project_txn_count_30d': int(tx['project_txn_count_30d']) if tx['project_txn_count_30d'] is not None else 0,
+                    'project_flags_30d': int(tx['project_flags_30d']) if tx['project_flags_30d'] is not None else 0,
+                    'project_avg_demand_30d': float(tx['project_avg_demand_30d']) if tx['project_avg_demand_30d'] is not None else 0.0,
+                    'project_avg_outstanding_30d': float(tx['project_avg_outstanding_30d']) if tx['project_avg_outstanding_30d'] is not None else 0.0,
+                    'project_avg_outstanding_ratio_30d': float(tx['project_avg_outstanding_ratio_30d']) if tx['project_avg_outstanding_ratio_30d'] is not None else 0.0,
+                    'project_avg_refund_30d': float(tx['project_avg_refund_30d']) if tx['project_avg_refund_30d'] is not None else 0.0,
+                    'unit_txn_count_30d': int(tx['unit_txn_count_30d']) if tx['unit_txn_count_30d'] is not None else 0,
+                    'unit_flags_30d': int(tx['unit_flags_30d']) if tx['unit_flags_30d'] is not None else 0,
+                    'unit_owner_changes_30d': int(tx['unit_owner_changes_30d']) if tx['unit_owner_changes_30d'] is not None else 0,
+                    'unit_avg_outstanding_30d': float(tx['unit_avg_outstanding_30d']) if tx['unit_avg_outstanding_30d'] is not None else 0.0,
+                    'unit_avg_demand_30d': float(tx['unit_avg_demand_30d']) if tx['unit_avg_demand_30d'] is not None else 0.0,
+                    'unit_unique_customer_count_30d': int(tx['unit_unique_customer_count_30d']) if tx['unit_unique_customer_count_30d'] is not None else 0,
+                    'rule_violation_count': float(len(violations)),
+                    'zscore_count': 1.0 if z_row else 0.0,
+                    'iqr_count': 1.0 if iqr_row else 0.0,
+                    'groupwise_count': 1.0 if gw_row else 0.0,
+                    'isolation_forest_score': float(if_row['anomaly_score']) if (if_row and if_row['anomaly_score']) else 0.0,
+                    'total_anomaly_count': float(len(tx_anoms))
+                })
+
+        if ml_model and feature_rows:
+            try:
+                feature_cols_ordered = [
+                    'demand_amount', 'collected_amount', 'outstanding_amount', 'discount_amount', 'refund_amount',
+                    'payment_delay_days', 'payment_gap_days',
+                    'customer_txn_count_30d', 'customer_flags_30d', 'customer_avg_delay_30d',
+                    'customer_avg_discount_30d', 'customer_avg_refund_30d', 'customer_avg_outstanding_30d',
+                    'customer_max_outstanding_30d', 'customer_avg_outstanding_ratio_30d',
+                    'customer_refund_count_90d', 'customer_refund_count_180d', 'customer_total_refund_180d',
+                    'customer_total_refund_lifetime', 'customer_discount_count_lifetime', 'customer_fraud_count_lifetime',
+                    'project_txn_count_30d', 'project_flags_30d', 'project_avg_demand_30d',
+                    'project_avg_outstanding_30d', 'project_avg_outstanding_ratio_30d', 'project_avg_refund_30d',
+                    'unit_txn_count_30d', 'unit_flags_30d', 'unit_owner_changes_30d',
+                    'unit_avg_outstanding_30d', 'unit_avg_demand_30d', 'unit_unique_customer_count_30d',
+                    'rule_violation_count', 'zscore_count', 'iqr_count', 'groupwise_count', 
+                    'isolation_forest_score', 'total_anomaly_count'
+                ]
+                import pandas as pd
+                feat_df = pd.DataFrame(feature_rows)[feature_cols_ordered]
+                probs = ml_model.predict_proba(feat_df)[:, 1]
+                for idx, p in enumerate(probs):
+                    risk_list[idx]["ml_probability"] = float(p)
+            except Exception as e:
+                print(f"Batch prediction error: {e}")
+
+        rec_actions = {k: v for k, v in rec_actions.items() if v > 0}
+        total_flagged = breakdown["CRITICAL"] + breakdown["HIGH"] + breakdown["MEDIUM"]
+        exposure_pct = (total_flagged / total_audited * 100) if total_audited > 0 else 0.0
+        
+        def format_cr(val):
+            cr = val / 10000000
+            return f"₹{cr:.2f} Cr"
+
         exec_summary = {
             "executive_summary": {
                 "total_audited": total_audited,
@@ -402,6 +470,8 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
                 "exposure_pct": exposure_pct,
                 "breakdown": breakdown
             },
+            "engine_performance": engine_stats,
+            "grouped_recommendations": rec_actions,
             "fraud_patterns": fraud_patterns,
             "financial_exposure": {
                 "raw": {
@@ -416,7 +486,7 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
                 }
             },
             "top_10_high_priority": sorted(
-                [{"transaction_id": r["transaction_id"], "risk_score": r["risk_score"], "severity": r["risk_severity"], "recommended_action": r["recommended_action"]} for r in risk_list],
+                [{"transaction_id": r["transaction_id"], "risk_score": r["risk_score"], "severity": r["risk_severity"], "recommended_action": r["recommended_action"]} for r in risk_list if r["fraud_label"] is None],
                 key=lambda x: x["risk_score"],
                 reverse=True
             )[:10]
@@ -452,6 +522,136 @@ def load_local_reports():
             pass
             
     return exec_summary, risk_list
+
+def generate_ascii_report_text(summary_data):
+    """Formats a stunning, corporate-level ASCII console summary directly in memory"""
+    if not summary_data:
+        return "No report data available."
+        
+    overview = summary_data.get("executive_summary") or {}
+    breakdown = overview.get("breakdown") or {}
+    breakdown_upper = {k.upper(): v for k, v in breakdown.items()}
+    
+    crit_count = breakdown_upper.get("CRITICAL", 0)
+    high_count = breakdown_upper.get("HIGH", 0)
+    med_count = breakdown_upper.get("MEDIUM", 0)
+    low_count = breakdown_upper.get("LOW", 0)
+    
+    engines = summary_data.get("engine_performance") or {}
+    exposure = (summary_data.get("financial_exposure") or {}).get("formatted") or {}
+    
+    demand_exp = exposure.get("demand_exposure") or "₹0.00 Cr"
+    outstanding_exp = exposure.get("outstanding_exposure") or "₹0.00 Cr"
+    refund_exp = exposure.get("refund_exposure") or "₹0.00 Cr"
+    
+    patterns = summary_data.get("fraud_patterns") or {}
+    actions = summary_data.get("grouped_recommendations") or {}
+    top_10 = summary_data.get("top_10_high_priority") or []
+    
+    lines = []
+    lines.append("┌" + "─" * 78 + "┐")
+    lines.append("│" + " OPTOxCRM FINANCE RISK RADAR - EXECUTIVE AUDIT REPORT ".center(78, " ") + "│")
+    lines.append("├" + "─" * 78 + "┤")
+    
+    # 1. Dataset Overview Panel
+    lines.append("│  1. DATASET OVERVIEW & CLASS BREAKDOWN                                       │")
+    lines.append("├" + "─" * 78 + "┤")
+    
+    line1 = f"  Total Transactions Scored : {overview.get('total_audited', 0):<10}  Risk Exposure : {overview.get('exposure_pct', 0.0)}%"
+    lines.append(f"│{line1:<78}│")
+    
+    line2 = f"  Total Flagged Anomalies   : {overview.get('total_flagged', 0):<10}  Critical Risk : {crit_count}"
+    lines.append(f"│{line2:<78}│")
+    
+    line3 = f"  High Severity Risks       : {high_count:<10}  Medium Risks  : {med_count}"
+    lines.append(f"│{line3:<78}│")
+    
+    line4 = f"  Low Severity/Safe Entries : {low_count}"
+    lines.append(f"│{line4:<78}│")
+    
+    lines.append("├" + "─" * 78 + "┤")
+    
+    # 2. Financial Exposure Summary
+    lines.append("│  2. FINANCIAL VALUE AT RISK (EXPOSURE)                                       │")
+    lines.append("├" + "─" * 78 + "┤")
+    
+    line_exp1 = f"  Total Demand Value at Risk (Critical + High)  : {demand_exp}"
+    lines.append(f"│{line_exp1:<78}│")
+    
+    line_exp2 = f"  Flagged Outstanding Account Exposure          : {outstanding_exp}"
+    lines.append(f"│{line_exp2:<78}│")
+    
+    line_exp3 = f"  Flagged Outflow/Refund Exposure               : {refund_exp}"
+    lines.append(f"│{line_exp3:<78}│")
+    
+    lines.append("├" + "─" * 78 + "┤")
+    
+    # 3. Engine Statistics Panel
+    lines.append("│  3. SUB-ENGINE DETECTION PERFORMANCE STATS                                   │")
+    lines.append("├" + "─" * 78 + "┤")
+    
+    left1 = f"  Rule Violations (Hard Rules)  : {engines.get('rule_violations', 0)}"
+    right1 = f"Z-Score Flags                  : {engines.get('zscore_flags', 0)}"
+    lines.append(f"│{left1:<37} │ {right1:<38}│")
+    
+    left2 = f"  IQR Flags (Statistical Out)   : {engines.get('iqr_flags', 0)}"
+    right2 = f"Isolation Forest (ML Outlier)  : {engines.get('isolation_forest_flags', 0)}"
+    lines.append(f"│{left2:<37} │ {right2:<38}│")
+    
+    left3 = f"  Groupwise Systemic Outliers   : {engines.get('groupwise_flags', 0)}"
+    right3 = ""
+    lines.append(f"│{left3:<37} │ {right3:<38}│")
+    
+    lines.append("├" + "─" * 78 + "┤")
+    
+    # 4. Fraud Patterns & Recommendations
+    lines.append("│  4. SUSPECTED FRAUD PATTERNS & DYNAMIC CFO RECOMMENDATIONS                   │")
+    lines.append("├" + "─" * 78 + "┤")
+    
+    left_h = "  [Fraud Patterns Detected]"
+    right_h = "[CFO Action Mitigation Groups]"
+    lines.append(f"│{left_h:<37} │ {right_h:<38}│")
+    
+    max_patterns = max(len(patterns), len(actions))
+    patterns_list = list(patterns.items())
+    actions_list = list(actions.items())
+    
+    for i in range(max_patterns):
+        p_str = ""
+        if i < len(patterns_list):
+            k, v = patterns_list[i]
+            p_str = f"  - {k[:23]}: {v}"
+            
+        a_str = ""
+        if i < len(actions_list):
+            k, v = actions_list[i]
+            k_abbrev = k.replace(" Required", "").replace(" Policy", "")
+            a_str = f" * {k_abbrev[:28]}: {v}"
+            
+        lines.append(f"│{p_str:<37} │ {a_str:<38}│")
+        
+    lines.append("├" + "─" * 78 + "┤")
+    
+    # 5. Top 10 High Priority Audit Queue
+    lines.append("│  5. HIGH PRIORITY AUDIT Remediation QUEUE (TOP 10)                           │")
+    lines.append("├" + "─" * 78 + "┤")
+    
+    lines.append(
+        f"│  {'Rank':<4} │ {'Transaction ID':<19} │ {'Risk Score':<10} │ {'Severity':<8} │ {'CFO Forensic Action':<25} │"
+    )
+    lines.append("├" + "─" * 78 + "┤")
+    
+    for rank, item in enumerate(top_10, 1):
+        action = item.get('recommended_action') or "Approved: Standard ledger archiving."
+        action_short = action.split(";")[0][:25]
+        txn_id_short = item.get('transaction_id', '')[:19]
+        
+        lines.append(
+            f"│  #{rank:<3} │ {txn_id_short:<19} │ {item.get('risk_score', 0):<10} │ {item.get('severity', ''):<8} │ {action_short:<25} │"
+        )
+        
+    lines.append("└" + "─" * 78 + "┘")
+    return "\n".join(lines) + "\n"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # GLOBAL USER CONFIG & WORKSPACE ROUTING
@@ -767,7 +967,7 @@ if st.session_state["active_page"] == "auditor":
 
     # ─── STEP 3: PAGINATION ───
     total_records = len(filtered_report)
-    total_pages = max(1, (total_records + 99) // 100)
+    total_pages = max(1, (total_records + 24) // 25)
 
     if "current_page_idx" not in st.session_state:
         st.session_state["current_page_idx"] = 1
@@ -792,16 +992,16 @@ if st.session_state["active_page"] == "auditor":
             "Select Page:",
             options=range(1, total_pages + 1),
             index=st.session_state["current_page_idx"] - 1,
-            format_func=lambda x: f"Page {x} of {total_pages} (Rows {(x-1)*100+1} - {min(x*100, total_records)})",
+            format_func=lambda x: f"Page {x} of {total_pages} (Rows {(x-1)*25+1} - {min(x*25, total_records)})",
             key="jump_page_select"
         )
-        if current_page != st.session_state["current_page_idx"]:
-            st.session_state["current_page_idx"] = current_page
-            st.rerun()
+    if current_page != st.session_state["current_page_idx"]:
+        st.session_state["current_page_idx"] = current_page
+        st.rerun()
 
     # Get page slice
-    start_idx = (st.session_state["current_page_idx"] - 1) * 100
-    end_idx = min(start_idx + 100, total_records)
+    start_idx = (st.session_state["current_page_idx"] - 1) * 25
+    end_idx = min(start_idx + 25, total_records)
     page_records = filtered_report[start_idx:end_idx]
 
     if not page_records:
@@ -864,15 +1064,30 @@ if st.session_state["active_page"] == "auditor":
 
             r_col1, r_col2, r_col3, r_col4, r_col5, r_col6 = st.columns([1.5, 1.5, 1.2, 1.2, 2.0, 2.0])
 
+            # Determine if the Auditor manually cleared a machine-flagged risk
+            is_override = False
+            ml_prob = tx.get("ml_probability")
+            if verdict is False and (
+                (ml_prob is not None and ml_prob >= 0.5) or 
+                (severity in ["CRITICAL", "HIGH", "MEDIUM"])
+            ):
+                is_override = True
+
             with r_col1:
                 st.markdown(f"**{txn_id}**")
             with r_col2:
                 st.markdown(f"`{cust_id}`")
             with r_col3:
-                st.markdown(f"{risk_score} / 100")
+                if is_override:
+                    st.markdown(f"~~{risk_score} / 100~~")
+                else:
+                    st.markdown(f"{risk_score} / 100")
             with r_col4:
-                color = "#EF4444" if severity == "CRITICAL" else "#F97316" if severity == "HIGH" else "#EAB308" if severity == "MEDIUM" else "#10B981"
-                st.markdown(f"<span style='color: {color}; font-weight: 600;'>{severity}</span>", unsafe_allow_html=True)
+                if is_override:
+                    st.markdown("<span style='color: #10B981; font-weight: 600;'>🟢 CLEARED</span>", unsafe_allow_html=True)
+                else:
+                    color = "#EF4444" if severity == "CRITICAL" else "#F97316" if severity == "HIGH" else "#EAB308" if severity == "MEDIUM" else "#10B981"
+                    st.markdown(f"<span style='color: {color}; font-weight: 600;'>{severity}</span>", unsafe_allow_html=True)
             
             with r_col5:
                 # Check if this row ID has an active "value updated" alert
@@ -881,17 +1096,19 @@ if st.session_state["active_page"] == "auditor":
 
                 # Construct ML Verdict Badge dynamically
                 ml_badge = ""
-                if tx.get("ml_probability") is not None:
-                    ml_prob = tx["ml_probability"]
+                if ml_prob is not None:
                     if ml_prob >= 0.5:
                         ml_badge = " <span style='background-color:rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color:#F87171; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:600;'>🤖 ML: Fraud</span>"
                     else:
                         ml_badge = " <span style='background-color:rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color:#34D399; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:600;'>🤖 ML: Clean</span>"
 
+                # Construct Overridden Badge
+                override_badge = " <span style='background-color:rgba(16,185,129,0.1); border: 1px solid #10B981; color:#34D399; font-size:10px; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:600;'>🔄 Overridden</span>" if is_override else ""
+
                 if verdict is True:
                     st.markdown(f"🔴 <span style='color: #F87171; font-weight: 600;'>Flagged Fraud</span>{update_badge}{ml_badge}", unsafe_allow_html=True)
                 elif verdict is False:
-                    st.markdown(f"🟢 <span style='color: #34D399; font-weight: 600;'>Clear</span>{update_badge}{ml_badge}", unsafe_allow_html=True)
+                    st.markdown(f"🟢 <span style='color: #34D399; font-weight: 600;'>Clear</span>{override_badge}{update_badge}{ml_badge}", unsafe_allow_html=True)
                 else:
                     if is_sla_breach:
                         st.markdown(f"⚠️ <span style='color: #EF4444; font-weight: 700; text-shadow: 0 0 8px rgba(239,68,68,0.3);'>SLA BREACH ({pending_days}d)</span>{update_badge}{ml_badge}", unsafe_allow_html=True)
@@ -909,7 +1126,6 @@ if st.session_state["active_page"] == "auditor":
                 else:  # verdict is None (Pending)
                     col_btn1, col_btn2 = st.columns(2)
                     with col_btn1:
-                        # Using row_id to guarantee unique Streamlit widget keys
                         if st.button("🚨 Flag", key=f"flag_{row_id}", type="secondary", use_container_width=True):
                             st.session_state["pending_verdicts"][row_id] = True
                             st.rerun()
@@ -957,7 +1173,7 @@ if st.session_state["active_page"] == "auditor":
                     if success_count > 0:
                         try:
                             import src.train_model as trainer
-                            trained = trainer.run_model_training(user_id=active_user)
+                            trained = trainer.run_model_training(user_id=active_user, batch_id=active_batch)
                             if trained:
                                 train_status = " and successfully trained the ML model!"
                             else:
@@ -972,6 +1188,9 @@ if st.session_state["active_page"] == "auditor":
                     if "pending_verdicts" in st.session_state:
                         del st.session_state["pending_verdicts"]
                     
+                    # Clear the Streamlit cache to load updated records from PostgreSQL
+                    load_database_reports.clear()
+                    
                     st.rerun()
                 else:
                     st.error("Error: Failed to connect to PostgreSQL database.")
@@ -982,28 +1201,16 @@ if st.session_state["active_page"] == "auditor":
 # ─── EXECUTIVE ANALYTICS BLANK STATE INTERCEPT ───
 if st.session_state["active_page"] == "analytics" and not pipeline_run:
     st.markdown("""
-    <div style="text-align: center; margin-top: 60px; margin-bottom: 40px;">
-        <h1 class='main-title' style='font-size: 45px; font-weight: 800; letter-spacing: -0.02em;'>
-            🛡️ OPTOxCRM Finance Risk Radar
-        </h1>
-        <p style='color: #94A3B8; font-size: 18px; margin-top: 10px;'>
-            Stakeholder Portal & Forensic Risk Evaluation Dashboard
-        </p>
+    <div style="text-align: center; padding: 50px 0px;">
+        <h1 style="font-family: 'Outfit'; font-weight: 700;">🚀 Finance Risk Radar Ingestion Portal</h1>
+        <p style="color: #94A3B8;">Please upload your financial voucher ledger sheet to initiate real-time forensic scanning.</p>
     </div>
     """, unsafe_allow_html=True)
     
     col_l, col_m, col_r = st.columns([1, 2, 1])
     with col_m:
-        st.markdown("""
-        <div style="background: rgba(30, 41, 59, 0.45); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 30px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);">
-            <h3 style="color: #F8FAFC; font-family: 'Outfit', sans-serif; font-weight: 600; margin-bottom: 25px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;">
-                📥 Import Financial Ledger
-            </h3>
-        </div>
-        """, unsafe_allow_html=True)
-        
         custom_batch_name = st.text_input("Custom Batch Name (Mandatory):", value="", placeholder="e.g. Q2_Audit_v1", key="landing_batch_name").strip()
-        uploaded_file = st.file_uploader("Upload new financial ledger CSV:", type=["csv"], key="landing_file_uploader")
+        uploaded_file = st.file_uploader("Upload new financial ledger (CSV or XLSX):", type=["csv", "xlsx"], key="landing_file_uploader")
         
         if uploaded_file is not None:
             st.markdown("<br>", unsafe_allow_html=True)
@@ -1017,9 +1224,51 @@ if st.session_state["active_page"] == "analytics" and not pipeline_run:
                     os.makedirs(temp_dir, exist_ok=True)
                     temp_path = os.path.join(temp_dir, f"uploaded_{active_user}.csv")
                     
-                    with open(temp_path, "wb") as f:
-                        f.write(uploaded_file.getbuffer())
+                    # 1. Load the uploaded file into a pandas DataFrame first
+                    try:
+                        if uploaded_file.name.endswith(".xlsx"):
+                            df_uploaded = pd.read_excel(uploaded_file)
+                        else:
+                            df_uploaded = pd.read_csv(uploaded_file)
+                    except Exception as e:
+                        st.error(f"Error reading file: {e}")
+                        st.stop()
+
+                    # 2. Heal / map truncated column headers back to expected names
+                    heal_map = {
+                        "transaction": "transaction_id",
+                        "customer_": "customer_id",
+                        "demand_a": "demand_amount",
+                        "collected_": "collected_amount",
+                        "outstandin": "outstanding_amount",
+                        "discount_a": "discount_amount",
+                        "refund_am": "refund_amount",
+                        "payment_d": "payment_delay_days",
+                        "demand_d": "demand_date",
+                        "payment_d.1": "payment_date"
+                    }
                     
+                    new_cols = []
+                    payment_d_seen = False
+                    for col in df_uploaded.columns:
+                        col_clean = str(col).strip()
+                        if col_clean == "payment_d":
+                            if not payment_d_seen:
+                                new_cols.append("payment_delay_days")
+                                payment_d_seen = True
+                            else:
+                                new_cols.append("payment_date")
+                        elif col_clean == "payment_d.1":
+                            new_cols.append("payment_date")
+                        elif col_clean in heal_map:
+                            new_cols.append(heal_map[col_clean])
+                        else:
+                            new_cols.append(col)
+                    
+                    df_uploaded.columns = new_cols
+
+                    # 3. Save the healed DataFrame to standard CSV
+                    df_uploaded.to_csv(temp_path, index=False)
                     # Show loading spinner
                     with st.spinner("Processing ledger pipeline through Hard Rules, Z-Score, IQR, Groupwise & Isolation Forest engines..."):
                         try:
@@ -1035,6 +1284,10 @@ if st.session_state["active_page"] == "analytics" and not pipeline_run:
                                 del st.session_state["pending_verdicts"]
                             
                             st.success(f"Pipeline executed successfully for batch: {custom_batch_name}!")
+                            
+                            # Clear cache so the dashboard retrieves the newly uploaded batch
+                            load_database_reports.clear()
+                            
                             st.rerun()
                         except Exception as e:
                             st.error(f"Error running pipeline: {e}")
@@ -1417,10 +1670,29 @@ st.markdown("### 💾 Stakeholder Export Center")
 st.caption("Instantly output audited reports in corporate-ready CSV, JSON, or text summary sheets.")
 st.markdown("<br>", unsafe_allow_html=True)
 
+@st.cache_data(show_spinner=False)
+def get_json_bytes(summary_data):
+    import json
+    return json.dumps(summary_data, indent=4).encode('utf-8')
+
+@st.cache_data(show_spinner=False)
+def get_csv_bytes(report_data):
+    import pandas as pd
+    import io
+    df_temp = pd.DataFrame(report_data or [])
+    buffer = io.StringIO()
+    df_temp.to_csv(buffer, index=False)
+    return buffer.getvalue().encode('utf-8')
+
+@st.cache_data(show_spinner=False)
+def get_txt_bytes(summary_data):
+    txt = generate_ascii_report_text(summary_data)
+    return txt.encode('utf-8')
+
 e1, e2, e3 = st.columns(3)
 
 with e1:
-    json_bytes = json.dumps(real_summary, indent=4).encode('utf-8')
+    json_bytes = get_json_bytes(real_summary)
     st.download_button(
         label="📥 Download JSON Report (.json)",
         data=json_bytes,
@@ -1429,11 +1701,7 @@ with e1:
     )
 
 with e2:
-    csv_df = pd.DataFrame(real_report or [])
-    csv_buffer = io.StringIO()
-    csv_df.to_csv(csv_buffer, index=False)
-    csv_bytes = csv_buffer.getvalue().encode('utf-8')
-    
+    csv_bytes = get_csv_bytes(real_report)
     st.download_button(
         label="📥 Download CSV Ledger (.csv)",
         data=csv_bytes,
@@ -1442,16 +1710,10 @@ with e2:
     )
 
 with e3:
-    txt_path = os.path.join(REPORTS_DIR, "summary_report.txt")
-    if os.path.exists(txt_path):
-        with open(txt_path, 'r', encoding='utf-8') as f:
-            summary_txt = f.read()
-    else:
-        summary_txt = f"OPTOxCRM Finance Risk Radar\nTotal Audited: {total_audited}\nTotal Flagged: {total_flagged}"
-        
+    summary_txt_bytes = get_txt_bytes(real_summary)
     st.download_button(
         label="📥 Download Executive Summary (.txt)",
-        data=summary_txt.encode('utf-8'),
+        data=summary_txt_bytes,
         file_name="summary_report.txt",
         mime="text/plain"
     )

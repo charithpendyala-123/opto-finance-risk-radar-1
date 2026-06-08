@@ -35,46 +35,33 @@ def detect_groupwise_anomalies(df):
     anomaly_registry = {}
     
     # ── 1. VECTORIZED GROUP SIZES FOR THE 5 LENSES (WITH NAMING SAFEGUARDS) ──
-    # Daily Lenses (grouped by key and measured with transform('size') to count all rows regardless of null transaction_ids)
     df_clean['demand_date_size'] = df_clean.groupby('demand_date')['demand_date'].transform('size').fillna(0)
     df_clean['payment_date_size'] = df_clean.groupby('payment_date')['payment_date'].transform('size').fillna(0)
-    
-    # Entity Lenses
     df_clean['project_id_size'] = df_clean.groupby('project_id')['project_id'].transform('size').fillna(0)
     df_clean['project_size'] = df_clean['project_id_size']
-    
     df_clean['customer_id_size'] = df_clean.groupby('customer_id')['customer_id'].transform('size').fillna(0)
     df_clean['customer_size'] = df_clean['customer_id_size']
-    
     df_clean['unit_id_size'] = df_clean.groupby('unit_id')['unit_id'].transform('size').fillna(0)
     df_clean['unit_size'] = df_clean['unit_id_size']
 
-    # ── 1b. OPTIMIZED VECTORIZED STATS FOR LOGICAL CASES (PREVENTS O(N^2) INNER-LOOP LOOPS) ──
-    # Case 10: Multi-Project Customer unique projects count
+    # ── 1b. OPTIMIZED VECTORIZED STATS FOR LOGICAL CASES ──
     df_clean['customer_unique_projs'] = df_clean.groupby('customer_id')['project_id'].transform('nunique').fillna(0)
-    
-    # Case 11: Multi-Unit Customer booking unique units count per project
     df_clean['customer_proj_unique_units'] = df_clean.groupby(['customer_id', 'project_id'])['unit_id'].transform('nunique').fillna(0)
-    
-    # Case 14: Date Compression Burst invoice count on same day per customer
     df_clean['customer_demand_date_count'] = df_clean.groupby(['customer_id', 'demand_date'])['demand_date'].transform('size').fillna(0)
 
     # ── 2. PRE-CALCULATE LOCAL IQR BOUNDS (VECTORIZED) ──
-    # Project & Customer Demand Bounds
     for lens in ['project_id', 'customer_id']:
         q1 = df_clean.groupby(lens)['demand_amount'].transform(lambda x: x.quantile(0.25))
         q3 = df_clean.groupby(lens)['demand_amount'].transform(lambda x: x.quantile(0.75))
         iqr_val = q3 - q1
         df_clean[f'{lens}_demand_upper'] = q3 + 1.5 * iqr_val
 
-    # Project & Customer Collection Bounds
     for lens in ['project_id', 'customer_id']:
         q1 = df_clean.groupby(lens)['collected_amount'].transform(lambda x: x.quantile(0.25))
         q3 = df_clean.groupby(lens)['collected_amount'].transform(lambda x: x.quantile(0.75))
         iqr_val = q3 - q1
         df_clean[f'{lens}_collected_upper'] = q3 + 1.5 * iqr_val
 
-    # Project Ratio Bounds (outstanding / demand)
     df_clean['outstanding_ratio'] = np.where(df_clean['demand_amount'] > 0, df_clean['outstanding_amount'] / df_clean['demand_amount'], 0)
     q1_r = df_clean.groupby('project_id')['outstanding_ratio'].transform(lambda x: x.quantile(0.25))
     q3_r = df_clean.groupby('project_id')['outstanding_ratio'].transform(lambda x: x.quantile(0.75))
@@ -83,31 +70,38 @@ def detect_groupwise_anomalies(df):
     df_clean['project_ratio_upper'] = q3_r + 1.5 * iqr_r
 
     # ── 3. PRE-CALCULATE SYSTEM & VOLUME STATS ──
-    # Daily counts mapped back
     demand_counts = df_clean.groupby('demand_date')['transaction_id'].size()
     payment_counts = df_clean.groupby('payment_date')['transaction_id'].size()
     
-    # Global daily IQR fences
-    _, d_upper, _ = iqr(demand_counts)
-    _, p_upper, _ = iqr(payment_counts)
+    # helper for IQR bounds
+    def local_iqr(series):
+        q1 = series.quantile(0.25)
+        q3 = series.quantile(0.75)
+        return q3 + 1.5 * (q3 - q1)
+        
+    d_upper = local_iqr(demand_counts)
+    p_upper = local_iqr(payment_counts)
     
     df_clean['demand_date_count'] = df_clean['demand_date'].map(demand_counts).fillna(0)
     df_clean['payment_date_count'] = df_clean['payment_date'].map(payment_counts).fillna(0)
 
-    # Project distribution median shifts
     df_clean['daily_proj_avg'] = df_clean.groupby(['project_id', 'demand_date'])['demand_amount'].transform('mean')
     df_clean['proj_median_30d'] = df_clean.groupby('project_id')['demand_amount'].transform('median')
 
     # Pre-sort for sequential checks
     df_clean = df_clean.sort_values(by=['unit_id', 'customer_id', 'demand_date_parsed']).reset_index(drop=True)
 
-    # Pre-group by unit_id for high-speed rolling window lookup in Case 15
-    unit_groups = {uid: grp for uid, grp in df_clean.groupby('unit_id')}
+    records = df_clean.to_dict('records')
+    current_unit_id = None
+    unit_window = []
+
+    def nunique_safe(lst):
+        filtered = [x for x in lst if pd.notna(x) and x != 'N/A' and str(x).strip() != '' and str(x).lower() != 'nan']
+        return len(set(filtered))
 
     # ── 4. EXECUTE ALL 15 FORENSIC CHECKS INSTANTLY ──
-    for idx, row in df_clean.iterrows():
-        # --- THE HOOPHOLE PATCH: Generate Virtual ID if blank ---
-        row_num = int(row['original_row_num'])  # Matches actual Excel/CSV row number (1-indexed + header)
+    for idx, row in enumerate(records):
+        row_num = int(row['original_row_num'])
         raw_txn_id = row['transaction_id']
         
         if pd.isna(raw_txn_id) or str(raw_txn_id).strip() == "" or str(raw_txn_id).lower() == 'nan':
@@ -119,9 +113,9 @@ def detect_groupwise_anomalies(df):
         proj_id = row['project_id']
         unit_id = row['unit_id']
 
-        # Ensure our anomaly_registry has this ID initialized (just in case)
         if txn_id not in anomaly_registry:
             anomaly_registry[txn_id] = []
+
         # CATEGORY 1: Dynamic Statistical Checks (IQRs)
         # Case 1: Demand Spikes
         for lens in ['project_id', 'customer_id']:
@@ -163,7 +157,7 @@ def detect_groupwise_anomalies(df):
 
         # Case 5: Ghost Collection Pattern
         if idx > 0:
-            prev = df_clean.iloc[idx - 1]
+            prev = records[idx - 1]
             if prev['customer_id'] == cust_id:
                 collected_diff = row['collected_amount'] - prev['collected_amount']
                 outstanding_diff = prev['outstanding_amount'] - row['outstanding_amount']
@@ -183,9 +177,9 @@ def detect_groupwise_anomalies(df):
 
         # Case 7: Default Evasion Scheme (Alternating payments)
         if idx >= 3:
-            seq = df_clean.iloc[idx-3 : idx+1]
-            if seq['unit_id'].nunique() == 1:
-                vals = seq['collected_amount'].values
+            seq = records[idx-3 : idx+1]
+            if nunique_safe([r['unit_id'] for r in seq]) == 1:
+                vals = [r['collected_amount'] for r in seq]
                 if (vals[0] > 0 and vals[1] == 0 and vals[2] > 0 and vals[3] == 0) or \
                    (vals[0] == 0 and vals[1] > 0 and vals[2] == 0 and vals[3] > 0):
                     anomaly_registry[txn_id].append({
@@ -195,9 +189,9 @@ def detect_groupwise_anomalies(df):
 
         # Case 8: Boiling Frog (Engineered billing escalation)
         if idx >= 2:
-            seq = df_clean.iloc[idx-2 : idx+1]
-            if seq['customer_id'].nunique() == 1:
-                vals = seq['demand_amount'].values
+            seq = records[idx-2 : idx+1]
+            if nunique_safe([r['customer_id'] for r in seq]) == 1:
+                vals = [r['demand_amount'] for r in seq]
                 if vals[0] < vals[1] < vals[2]:
                     anomaly_registry[txn_id].append({
                         "lens": "customer_id", "case": "Billing Escalation Flag",
@@ -206,10 +200,10 @@ def detect_groupwise_anomalies(df):
 
         # Case 9: Silent Liability Write-down
         if idx >= 2:
-            seq = df_clean.iloc[idx-2 : idx+1]
-            if seq['unit_id'].nunique() == 1:
-                vals = seq['demand_amount'].values
-                if vals[0] > vals[1] > vals[2] and seq['collected_amount'].eq(0).all() and seq['discount_amount'].eq(0).all():
+            seq = records[idx-2 : idx+1]
+            if nunique_safe([r['unit_id'] for r in seq]) == 1:
+                vals = [r['demand_amount'] for r in seq]
+                if vals[0] > vals[1] > vals[2] and all(r['collected_amount'] == 0 for r in seq) and all(r['discount_amount'] == 0 for r in seq):
                     anomaly_registry[txn_id].append({
                         "lens": "unit_id", "case": "Liability Write-down Flag",
                         "reason": f"Monotonically decreasing demand amounts ({vals[0]:,.0f} -> {vals[1]:,.0f} -> {vals[2]:,.0f}) with zero collections/discounts."
@@ -245,7 +239,6 @@ def detect_groupwise_anomalies(df):
             })
 
         # Case 13: Project-Level Distribution Shift
-        # Case 13: Project-Level Distribution Shift
         if row['daily_proj_avg'] > (3 * row['proj_median_30d']) and row['proj_median_30d'] > 0:
             anomaly_registry[txn_id].append({
                 "lens": "project_id", "case": "Project Distribution Shift Flag",
@@ -261,18 +254,19 @@ def detect_groupwise_anomalies(df):
             })
 
         # Case 15: Unit Recycling Pattern
-        unit_grp = unit_groups.get(unit_id)
-        if unit_grp is not None:
-            unit_15d_rows = unit_grp[
-                (unit_grp['demand_date_parsed'] >= row['demand_date_parsed'] - pd.Timedelta(days=15)) &
-                (unit_grp['demand_date_parsed'] <= row['demand_date_parsed'])
-            ]
-            unique_owners = unit_15d_rows['customer_id'].nunique()
-            if unique_owners >= 3:
-                anomaly_registry[txn_id].append({
-                    "lens": "unit_id", "case": "Rapid Unit Reassignment Flag",
-                    "reason": f"Physical property unit reassigned across {unique_owners} unique customers in a 15-day window."
-                })
+        if unit_id != current_unit_id:
+            current_unit_id = unit_id
+            unit_window = []
+        if pd.notna(cust_id) and cust_id != 'N/A' and str(cust_id).strip() != '' and str(cust_id).lower() != 'nan':
+            unit_window.append((row['demand_date_parsed'], cust_id))
+        cutoff = row['demand_date_parsed'] - pd.Timedelta(days=15)
+        unit_window = [w for w in unit_window if w[0] >= cutoff]
+        unique_owners = len(set(w[1] for w in unit_window))
+        if unique_owners >= 3:
+            anomaly_registry[txn_id].append({
+                "lens": "unit_id", "case": "Rapid Unit Reassignment Flag",
+                "reason": f"Physical property unit reassigned across {unique_owners} unique customers in a 15-day window."
+            })
 
     return df_clean, anomaly_registry
 

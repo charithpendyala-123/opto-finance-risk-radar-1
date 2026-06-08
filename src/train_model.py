@@ -22,7 +22,7 @@ except ImportError:
 # Dynamically add parent directory for absolute/relative import compatibility
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-def run_model_training(user_id="system_default"):
+def run_model_training(user_id="system_default", batch_id="All Batches"):
     import src.db as db
     conn = db.get_connection()
     if conn is None:
@@ -31,23 +31,36 @@ def run_model_training(user_id="system_default"):
         
     print("=========================================================================")
     # Phase 1: Training Readiness Validation
-    print("[Phase 1] Running training readiness validation checks...")
+    print(f"[Phase 1] Running training readiness validation checks for batch: {batch_id}...")
     
     # 1. Fetch total transactions count
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM transactions WHERE user_id = %s;", (user_id,))
+            if batch_id and batch_id != "All Batches":
+                cur.execute("SELECT COUNT(*) FROM transactions WHERE user_id = %s AND upload_batch_id = %s;", (user_id, batch_id))
+            else:
+                cur.execute("SELECT COUNT(*) FROM transactions WHERE user_id = %s;", (user_id,))
             total_tx = cur.fetchone()[0]
             
             # 2. Fetch total reviewed transactions (fraud_label is not null)
-            cur.execute("""
-                SELECT COUNT(*), 
-                       SUM(CASE WHEN fraud_label = TRUE THEN 1 ELSE 0 END),
-                       SUM(CASE WHEN fraud_label = FALSE THEN 1 ELSE 0 END)
-                FROM auditor_feedback af
-                JOIN transactions t ON af.transaction_row_id = t.id
-                WHERE t.user_id = %s AND af.fraud_label IS NOT NULL;
-            """, (user_id,))
+            if batch_id and batch_id != "All Batches":
+                cur.execute("""
+                    SELECT COUNT(*), 
+                           SUM(CASE WHEN fraud_label = TRUE THEN 1 ELSE 0 END),
+                           SUM(CASE WHEN fraud_label = FALSE THEN 1 ELSE 0 END)
+                    FROM auditor_feedback af
+                    JOIN transactions t ON af.transaction_row_id = t.id
+                    WHERE t.user_id = %s AND t.upload_batch_id = %s AND af.fraud_label IS NOT NULL;
+                """, (user_id, batch_id))
+            else:
+                cur.execute("""
+                    SELECT COUNT(*), 
+                           SUM(CASE WHEN fraud_label = TRUE THEN 1 ELSE 0 END),
+                           SUM(CASE WHEN fraud_label = FALSE THEN 1 ELSE 0 END)
+                    FROM auditor_feedback af
+                    JOIN transactions t ON af.transaction_row_id = t.id
+                    WHERE t.user_id = %s AND af.fraud_label IS NOT NULL;
+                """, (user_id,))
             reviewed_row = cur.fetchone()
             total_reviewed = reviewed_row[0] or 0
             fraud_count = reviewed_row[1] or 0
@@ -58,7 +71,7 @@ def run_model_training(user_id="system_default"):
         return False
 
     if total_tx == 0:
-        print("[Training Aborted] Skip: Database contains 0 total transactions.")
+        print("[Training Aborted] Skip: Dataset/Batch contains 0 total transactions.")
         conn.close()
         return False
 
@@ -95,52 +108,93 @@ def run_model_training(user_id="system_default"):
     print(f"  - Label requirements  : At least 1 Fraud (1) and 1 Clean (0) record")
     
     if not ready:
-        print("\n[SKIP TRAINING] Dataset fails training readiness validation criteria.")
+        print("\n[SKIP TRAINING] Dataset/Batch fails training readiness validation criteria.")
         print("Heuristics (Rule Engine, Z-Score, IQR, Groupwise, Isolation Forest) will continue to run.")
         print("NO mock labels or bootstrapping performed. Only real auditor reviews accepted.")
         conn.close()
         return False
         
-    print("\n[Phase 1 Result] PASS: Dataset meets readiness criteria. Starting training...")
+    print("\n[Phase 1 Result] PASS: Dataset/Batch meets readiness criteria. Starting training...")
     
     # Phase 2: Dataset Construction
     print("\n[Phase 2] Constructing dataset from PostgreSQL database...")
-    query_main = """
-        SELECT 
-            t.id AS transaction_row_id,
-            -- Transaction Features
-            t.demand_amount, t.collected_amount, t.outstanding_amount, t.discount_amount, t.refund_amount,
-            t.payment_delay_days, t.payment_gap_days,
-            
-            -- Rolling Features
-            trf.customer_txn_count_30d, trf.customer_flags_30d, trf.customer_avg_delay_30d,
-            trf.customer_avg_discount_30d, trf.customer_avg_refund_30d, trf.customer_avg_outstanding_30d,
-            trf.customer_max_outstanding_30d, trf.customer_avg_outstanding_ratio_30d,
-            trf.customer_refund_count_90d, trf.customer_refund_count_180d, trf.customer_total_refund_180d,
-            trf.customer_total_refund_lifetime, trf.customer_discount_count_lifetime, trf.customer_fraud_count_lifetime,
-            trf.project_txn_count_30d, trf.project_flags_30d, trf.project_avg_demand_30d,
-            trf.project_avg_outstanding_30d, trf.project_avg_outstanding_ratio_30d, trf.project_avg_refund_30d,
-            trf.unit_txn_count_30d, trf.unit_flags_30d, trf.unit_owner_changes_30d,
-            trf.unit_avg_outstanding_30d, trf.unit_avg_demand_30d, trf.unit_unique_customer_count_30d,
-            
-            -- Target Variable
-            af.fraud_label
-        FROM transactions t
-        JOIN transaction_rolling_features trf ON t.id = trf.transaction_row_id
-        JOIN auditor_feedback af ON t.id = af.transaction_row_id
-        WHERE t.user_id = %s AND af.fraud_label IS NOT NULL;
-    """
     
-    try:
-        df_main = pd.read_sql(query_main, conn, params=[user_id])
+    if batch_id and batch_id != "All Batches":
+        query_main = """
+            SELECT 
+                t.id AS transaction_row_id,
+                -- Transaction Features
+                t.demand_amount, t.collected_amount, t.outstanding_amount, t.discount_amount, t.refund_amount,
+                t.payment_delay_days, t.payment_gap_days,
+                
+                -- Rolling Features
+                trf.customer_txn_count_30d, trf.customer_flags_30d, trf.customer_avg_delay_30d,
+                trf.customer_avg_discount_30d, trf.customer_avg_refund_30d, trf.customer_avg_outstanding_30d,
+                trf.customer_max_outstanding_30d, trf.customer_avg_outstanding_ratio_30d,
+                trf.customer_refund_count_90d, trf.customer_refund_count_180d, trf.customer_total_refund_180d,
+                trf.customer_total_refund_lifetime, trf.customer_discount_count_lifetime, trf.customer_fraud_count_lifetime,
+                trf.project_txn_count_30d, trf.project_flags_30d, trf.project_avg_demand_30d,
+                trf.project_avg_outstanding_30d, trf.project_avg_outstanding_ratio_30d, trf.project_avg_refund_30d,
+                trf.unit_txn_count_30d, trf.unit_flags_30d, trf.unit_owner_changes_30d,
+                trf.unit_avg_outstanding_30d, trf.unit_avg_demand_30d, trf.unit_unique_customer_count_30d,
+                
+                -- Target Variable
+                af.fraud_label
+            FROM transactions t
+            JOIN transaction_rolling_features trf ON t.id = trf.transaction_row_id
+            JOIN auditor_feedback af ON t.id = af.transaction_row_id
+            WHERE t.user_id = %s AND t.upload_batch_id = %s AND af.fraud_label IS NOT NULL;
+        """
+        params_main = [user_id, batch_id]
         
-        # Load and pivot anomaly results in python
-        anom_df = pd.read_sql("""
+        query_anom = """
+            SELECT ar.transaction_row_id, ar.engine_name, ar.anomaly_flag, ar.anomaly_score 
+            FROM anomaly_results ar
+            JOIN transactions t ON ar.transaction_row_id = t.id
+            WHERE t.user_id = %s AND t.upload_batch_id = %s;
+        """
+        params_anom = [user_id, batch_id]
+    else:
+        query_main = """
+            SELECT 
+                t.id AS transaction_row_id,
+                -- Transaction Features
+                t.demand_amount, t.collected_amount, t.outstanding_amount, t.discount_amount, t.refund_amount,
+                t.payment_delay_days, t.payment_gap_days,
+                
+                -- Rolling Features
+                trf.customer_txn_count_30d, trf.customer_flags_30d, trf.customer_avg_delay_30d,
+                trf.customer_avg_discount_30d, trf.customer_avg_refund_30d, trf.customer_avg_outstanding_30d,
+                trf.customer_max_outstanding_30d, trf.customer_avg_outstanding_ratio_30d,
+                trf.customer_refund_count_90d, trf.customer_refund_count_180d, trf.customer_total_refund_180d,
+                trf.customer_total_refund_lifetime, trf.customer_discount_count_lifetime, trf.customer_fraud_count_lifetime,
+                trf.project_txn_count_30d, trf.project_flags_30d, trf.project_avg_demand_30d,
+                trf.project_avg_outstanding_30d, trf.project_avg_outstanding_ratio_30d, trf.project_avg_refund_30d,
+                trf.unit_txn_count_30d, trf.unit_flags_30d, trf.unit_owner_changes_30d,
+                trf.unit_avg_outstanding_30d, trf.unit_avg_demand_30d, trf.unit_unique_customer_count_30d,
+                
+                -- Target Variable
+                af.fraud_label
+            FROM transactions t
+            JOIN transaction_rolling_features trf ON t.id = trf.transaction_row_id
+            JOIN auditor_feedback af ON t.id = af.transaction_row_id
+            WHERE t.user_id = %s AND af.fraud_label IS NOT NULL;
+        """
+        params_main = [user_id]
+        
+        query_anom = """
             SELECT ar.transaction_row_id, ar.engine_name, ar.anomaly_flag, ar.anomaly_score 
             FROM anomaly_results ar
             JOIN transactions t ON ar.transaction_row_id = t.id
             WHERE t.user_id = %s;
-        """, conn, params=[user_id])
+        """
+        params_anom = [user_id]
+        
+    try:
+        df_main = pd.read_sql(query_main, conn, params=params_main)
+        
+        # Load and pivot anomaly results in python
+        anom_df = pd.read_sql(query_anom, conn, params=params_anom)
     except Exception as e:
         print(f"[Training Error] Failed to read dataset records from PostgreSQL: {e}")
         conn.close()
@@ -214,7 +268,7 @@ def run_model_training(user_id="system_default"):
     X = df[feature_columns]
     y = df['fraud_label'].astype(int)
     
-        # Phase 5: Train/Test Split
+    # Phase 5: Train/Test Split
     class_counts = y.value_counts()
     low_classes = class_counts[class_counts < 2].index.tolist()
     

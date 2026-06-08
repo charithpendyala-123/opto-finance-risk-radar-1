@@ -3,49 +3,40 @@
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  1. DATASET OVERVIEW & CLASS BREAKDOWN                                       │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│  Total Transactions Scored : 75          Risk Exposure : 100.0%              │
-│  Total Flagged Anomalies   : 75          Critical Risk : 74                  │
-│  High Severity Risks       : 1           Medium Risks  : 0                   │
+│  Total Transactions Scored : 70          Risk Exposure : 100.0%              │
+│  Total Flagged Anomalies   : 70          Critical Risk : 70                  │
+│  High Severity Risks       : 0           Medium Risks  : 0                   │
 │  Low Severity/Safe Entries : 0                                               │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  2. FINANCIAL VALUE AT RISK (EXPOSURE)                                       │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│  Total Demand Value at Risk (Critical + High)  : ₹1724.28 Cr                 │
-│  Flagged Outstanding Account Exposure          : ₹1539.87 Cr                 │
-│  Flagged Outflow/Refund Exposure               : ₹457.42 Cr                  │
+│  Total Demand Value at Risk (Critical + High)  : ₹76.84 L                    │
+│  Flagged Outstanding Account Exposure          : ₹5.49 L                     │
+│  Flagged Outflow/Refund Exposure               : ₹95,457.00                  │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  3. SUB-ENGINE DETECTION PERFORMANCE STATS                                   │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│  Rule Violations (Hard Rules)  : 75  │ Z-Score Flags                  : 0    │
-│  IQR Flags (Statistical Out)   : 2   │ Isolation Forest (ML Outlier)  : 14   │
-│  Groupwise Systemic Outliers   : 49  │                                       │
+│  Rule Violations (Hard Rules)  : 70  │ Z-Score Flags                  : 0    │
+│  IQR Flags (Statistical Out)   : 0   │ Isolation Forest (ML Outlier)  : 48   │
+│  Groupwise Systemic Outliers   : 8   │                                       │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  4. SUSPECTED FRAUD PATTERNS & DYNAMIC CFO RECOMMENDATIONS                   │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  [Fraud Patterns Detected]           │ [CFO Action Mitigation Groups]        │
-│  - High Policy Outlier: Ki: 24       │  * Immediate Ledger Freeze: 60        │
-│  - Bulk System Glitch: 18            │  * Senior Forensic Compliance R: 14   │
-│  - Collection Outlier: 12            │  * AML Review: 1                      │
-│  - Laundering Cash: 11               │                                       │
-│  - Phantom Billing: 8                │                                       │
-│  - Critical Fraud: Phantom: 7        │                                       │
-│  - Project Distribution Sh: 4        │                                       │
-│  - Demand Outlier: 3                 │                                       │
-│  - Billing Escalation: 3             │                                       │
-│  - Critical Fraud: Ghost C: 1        │                                       │
+│  - Billing Escalation: 8             │  * Senior Forensic Compliance R: 70   │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  5. HIGH PRIORITY AUDIT Remediation QUEUE (TOP 10)                           │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  Rank │ Transaction ID      │ Risk Score │ Severity │ CFO Forensic Action       │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│  #1   │ SYS_MISSING_ROW_51  │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #2   │ TXN10               │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #3   │ SYS_MISSING_ROW_49  │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #4   │ SYS_MISSING_ROW_74  │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #5   │ TXN5                │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #6   │ TXN4                │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #7   │ SYS_MISSING_ROW_43  │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #8   │ TXN4                │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #9   │ TXN16               │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
-│  #10  │ TXN18               │ 100        │ CRITICAL │ IMMEDIATE LEDGER SUSPENSI │
+│  #1   │ MIX006              │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #2   │ MIX018              │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #3   │ MIX033              │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #4   │ MIX023              │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #5   │ MIX066              │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #6   │ MIX022              │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #7   │ MIX009              │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #8   │ MIX005              │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #9   │ MIX055              │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
+│  #10  │ MIX056              │ 100        │ CRITICAL │ CRITICAL COMPLIANCE THREA │
 └──────────────────────────────────────────────────────────────────────────────┘

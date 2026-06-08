@@ -25,7 +25,8 @@ def save_transactions(conn, df, user_id="system_default", upload_batch_id="BAT_D
         return []
 
     records_to_insert = []
-    for idx, row in df.iterrows():
+    df_records = df.to_dict('records')
+    for idx, row in enumerate(df_records):
         txn_id = clean_value(row.get('transaction_id'))
         if not txn_id:
             row_num = idx + 2
