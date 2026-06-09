@@ -130,7 +130,7 @@ if not os.path.exists(REPORTS_DIR):
     REPORTS_DIR = os.path.join(os.getcwd(), "reports")
 
 @st.cache_resource
-def load_ml_model():
+def load_ml_model(mtime=0):
     import joblib
     model_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "best_fraud_model.pkl")
     if os.path.exists(model_path):
@@ -154,7 +154,9 @@ def load_database_reports(user_id="system_default", batch_id="All Batches"):
         return None, None
 
     # Load ML Model using cached resource load
-    ml_model = load_ml_model()
+    model_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "best_fraud_model.pkl")
+    mtime = os.path.getmtime(model_path) if os.path.exists(model_path) else 0
+    ml_model = load_ml_model(mtime)
 
     try:
         with conn.cursor() as cur:
@@ -1162,7 +1164,7 @@ if st.session_state["active_page"] == "auditor":
                 conn = db.get_connection()
                 if conn:
                     success_count = 0
-                    for rid, verdict in page_verdicts.items():
+                    for rid, verdict in st.session_state["pending_verdicts"].items():
                         if verdict is not None:
                             if feedback_repo.save_feedback(conn, rid, verdict, f"Reviewed via portal (Page {st.session_state['current_page_idx']})"):
                                 success_count += 1
@@ -1173,11 +1175,11 @@ if st.session_state["active_page"] == "auditor":
                     if success_count > 0:
                         try:
                             import src.train_model as trainer
-                            trained = trainer.run_model_training(user_id=active_user, batch_id=active_batch)
+                            trained = trainer.run_model_training(user_id=active_user, batch_id="All Batches")
                             if trained:
                                 train_status = " and successfully trained the ML model!"
                             else:
-                                train_status = " but ML training was skipped (requires both classes and 50% coverage)."
+                                train_status = " but ML training was skipped (requires at least 5 Fraud and 5 Clean reviews)."
                         except Exception as e:
                             train_status = f" but ML training failed: {e}"
                     

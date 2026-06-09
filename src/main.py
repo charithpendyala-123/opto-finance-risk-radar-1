@@ -15,17 +15,27 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
     print("\n[Orchestrator] Importing pipeline sub-engines...")
     try:
         rule_validator = importlib.import_module("src.03_rule_validator")
+        importlib.reload(rule_validator)
         anomaly_detector = importlib.import_module("src.08_anomaly_detector")
+        importlib.reload(anomaly_detector)
         risk_score = importlib.import_module("src.09_risk_score")
+        importlib.reload(risk_score)
         rec_engine = importlib.import_module("src.10_recommendation_engine")
+        importlib.reload(rec_engine)
         report_gen = importlib.import_module("src.11_report_generator")
+        importlib.reload(report_gen)
         rolling_window = importlib.import_module("src.rolling_window") 
+        importlib.reload(rolling_window)
         
         # Ingest database repositories
         import src.db as db
+        importlib.reload(db)
         import src.transaction_repository as txn_repo
+        importlib.reload(txn_repo)
         import src.anomaly_repository as anom_repo
+        importlib.reload(anom_repo)
         import src.risk_repository as risk_repo
+        importlib.reload(risk_repo)
     except ModuleNotFoundError as e:
         print(f"Error importing modules: {e}")
         print("Please ensure your working directory is set to the project root.")

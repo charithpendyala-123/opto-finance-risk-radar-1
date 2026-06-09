@@ -1,8 +1,8 @@
 {
   "model_type": "CatBoost",
   "f1_score": 1.0,
-  "roc_auc": NaN,
+  "roc_auc": 1.0,
   "recall": 1.0,
   "precision": 1.0,
-  "trained_on": "2026-06-08"
+  "trained_on": "2026-06-09"
 }

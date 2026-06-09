@@ -87,25 +87,15 @@ def run_model_training(user_id="system_default", batch_id="All Batches"):
     size_category = ""
     req_cov = 0.0
     
-    if total_tx < 100:
-        size_category = "Small (<100 rows)"
-        req_cov = 50.0
-        if coverage >= 50.0 and fraud_count > 0 and clean_count > 0:
-            ready = True
-    elif 100 <= total_tx <= 1000:
-        size_category = "Medium (100-1000 rows)"
-        req_cov = 20.0
-        if coverage >= 20.0 and fraud_count > 0 and clean_count > 0:
-            ready = True
-    else:
-        size_category = "Large (>1000 rows)"
-        req_cov = 10.0
-        if coverage >= 10.0 and fraud_count > 0 and clean_count > 0:
-            ready = True
+    # Require at least 5 fraud and 5 clean auditor reviews to trigger supervised model training
+    size_category = "Always Ready Check"
+    req_cov = 0.0
+    if fraud_count >= 5 and clean_count >= 5:
+        ready = True
             
     print(f"  - Dataset Size Category: {size_category}")
     print(f"  - Required Coverage   : >= {req_cov}%")
-    print(f"  - Label requirements  : At least 1 Fraud (1) and 1 Clean (0) record")
+    print(f"  - Label requirements  : At least 5 Fraud (1) and 5 Clean (0) records")
     
     if not ready:
         print("\n[SKIP TRAINING] Dataset/Batch fails training readiness validation criteria.")
@@ -151,7 +141,8 @@ def run_model_training(user_id="system_default", batch_id="All Batches"):
             SELECT ar.transaction_row_id, ar.engine_name, ar.anomaly_flag, ar.anomaly_score 
             FROM anomaly_results ar
             JOIN transactions t ON ar.transaction_row_id = t.id
-            WHERE t.user_id = %s AND t.upload_batch_id = %s;
+            JOIN auditor_feedback af ON t.id = af.transaction_row_id
+            WHERE t.user_id = %s AND t.upload_batch_id = %s AND af.fraud_label IS NOT NULL;
         """
         params_anom = [user_id, batch_id]
     else:
@@ -186,7 +177,8 @@ def run_model_training(user_id="system_default", batch_id="All Batches"):
             SELECT ar.transaction_row_id, ar.engine_name, ar.anomaly_flag, ar.anomaly_score 
             FROM anomaly_results ar
             JOIN transactions t ON ar.transaction_row_id = t.id
-            WHERE t.user_id = %s;
+            JOIN auditor_feedback af ON t.id = af.transaction_row_id
+            WHERE t.user_id = %s AND af.fraud_label IS NOT NULL;
         """
         params_anom = [user_id]
         
