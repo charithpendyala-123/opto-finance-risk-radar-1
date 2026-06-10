@@ -11,14 +11,16 @@ csv_loader = importlib.import_module("src.02_csv_loader")
 load_finance_csv = csv_loader.load_finance_csv
 
 # Safe Z-score calculation for a single column/series
-def z_score(series):
-    # Convert to numeric safely
+def z_score(series, col_name=None, cache=None):
     numeric_series = pd.to_numeric(series, errors='coerce')
     
-    mean = numeric_series.mean()
-    std = numeric_series.std()
+    if cache and col_name and col_name in cache.get('zscore', {}):
+        mean = cache['zscore'][col_name]['mean']
+        std = cache['zscore'][col_name]['std']
+    else:
+        mean = numeric_series.mean()
+        std = numeric_series.std()
     
-    # Shield against division by zero or NaN standard deviation/mean
     if std == 0 or pd.isna(std) or pd.isna(mean):
         return pd.Series(0.0, index=series.index)
         

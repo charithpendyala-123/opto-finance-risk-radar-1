@@ -194,7 +194,10 @@ def run_risk_scoring(
             gw_flag = bool(anom_details["groupwise_details"].get("flagged", False))
             gw_anomalies = anom_details["groupwise_details"].get("anomalies", [])
             if gw_flag:
-                score += gw
+                # If the ONLY groupwise anomalies triggered are Bulk System Glitches, assign a dampened base score of 10
+                only_glitch = all("Bulk System Glitch" in str(a.get("case", "")) for a in gw_anomalies)
+                base_gw = 10 if only_glitch else gw
+                score += base_gw
                 
                 # Dynamic Group-wise Severity Boost Calculations (avoiding double-counting)
                 boosts = [0]  # Initialize with 0 to safely handle empty cases

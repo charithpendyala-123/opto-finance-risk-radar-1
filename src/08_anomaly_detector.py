@@ -76,12 +76,13 @@ def patch_transaction_ids(df):
 
 # ── MAIN PIPELINE ORCHESTRATION ──
 
-def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.0, contamination='auto'):
+def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.0, contamination='auto', conn=None, user_id="system_default", batch_id=None):
     """
     Executes all four statistical and machine learning engines in parallel,
     aligning them via the upstream patched transaction IDs, and merges results
     into a unified anomaly auditing dataset.
     """
+    import joblib
     # ── BULLETPROOF WINDOWS PATH RESOLUTION ──
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if not os.path.isabs(csv_path):
@@ -96,32 +97,107 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
     # 2. Perform Upstream Virtual ID Patching (Ensures exact primary keys in memory)
     df = patch_transaction_ids(df_raw)
 
-    # 3. Clean and convert numeric columns globally (Leaves NaNs intact for proper statistical math)
-    # This prevents duplicate conversion overhead and shields all sub-engines from dtype crashes!
+    # 3. Clean and convert numeric columns globally
     numeric_cols = ['demand_amount', 'collected_amount', 'outstanding_amount', 'discount_amount', 'refund_amount', 'payment_delay_days']
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
+    # Load cache and pre-trained models if they exist
+    cache = None
+    cache_path = os.path.abspath(os.path.join(base_dir, "models", "stats_cache.json"))
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, "r") as f:
+                cache = json.load(f)
+            print("[Anomaly Pipeline] Loaded pre-computed historical statistics cache.")
+        except Exception as e:
+            print(f"Warning: Failed to load stats cache: {e}")
+
     print("\n[Engine Initialization] Running parallel anomaly audit sub-engines...")
 
     # ── ENGINE 1: GLOBAL Z-SCORE SUB-ENGINE ──
-    df['demand_amount_z_score'] = z_score(df['demand_amount'])
-    df['collected_amount_z_score'] = z_score(df['collected_amount'])
-    df['outstanding_amount_z_score'] = z_score(df['outstanding_amount'])
-    df['discount_amount_z_score'] = z_score(df['discount_amount'])
-    df['refund_amount_z_score'] = z_score(df['refund_amount'])
-    df['payment_delay_days_z_score'] = z_score(df['payment_delay_days'])
+    df['demand_amount_z_score'] = z_score(df['demand_amount'], 'demand_amount', cache)
+    df['collected_amount_z_score'] = z_score(df['collected_amount'], 'collected_amount', cache)
+    df['outstanding_amount_z_score'] = z_score(df['outstanding_amount'], 'outstanding_amount', cache)
+    df['discount_amount_z_score'] = z_score(df['discount_amount'], 'discount_amount', cache)
+    df['refund_amount_z_score'] = z_score(df['refund_amount'], 'refund_amount', cache)
+    df['payment_delay_days_z_score'] = z_score(df['payment_delay_days'], 'payment_delay_days', cache)
 
     # ── ENGINE 2: ROBUST IQR SUB-ENGINE ──
     for col in numeric_cols:
-        lower, upper, true_iqr = iqr(df[col])
+        lower, upper, true_iqr = iqr(df[col], col, cache)
         df[f'{col}_lower_bound'] = lower
         df[f'{col}_upper_bound'] = upper
         df[f'{col}_iqr'] = true_iqr
 
     # ── ENGINE 3: CONTEXTUAL GROUP-WISE SUB-ENGINE ──
-    # Unpack using standard throwaway '_' to keep code clean and maintain CSV row order in main df
-    _, groupwise_registry = detect_groupwise_anomalies(df)
+    # Replace the Groupwise Engine step (lines 121-124) with:
+    # ── ENGINE 3: CONTEXTUAL GROUP-WISE SUB-ENGINE ──
+    groupwise_registry = {}
+    if conn and user_id:
+        try:
+            print("[Groupwise Engine] Fetching historical context for active entities...")
+            active_customers = [c for c in df['customer_id'].unique() if pd.notna(c) and c != 'N/A' and str(c).strip() != '']
+            active_units = [u for u in df['unit_id'].unique() if pd.notna(u) and u != 'N/A' and str(u).strip() != '']
+            
+            df['demand_date_parsed'] = pd.to_datetime(df['demand_date'], errors='coerce')
+            min_date = df['demand_date_parsed'].min()
+            cutoff_date = min_date - pd.Timedelta(days=180) if pd.notna(min_date) else None
+            
+            conditions = ["t.user_id = %s"]
+            params = [user_id]
+            if batch_id:
+                conditions.append("t.upload_batch_id != %s")
+                params.append(batch_id)
+            if cutoff_date:
+                conditions.append("t.demand_date >= %s")
+                params.append(cutoff_date.date())
+                
+            entity_conds = []
+            if active_customers:
+                entity_conds.append("t.customer_id IN %s")
+                params.append(tuple(active_customers))
+            if active_units:
+                entity_conds.append("t.unit_id IN %s")
+                params.append(tuple(active_units))
+                
+            if entity_conds:
+                conditions.append("(" + " OR ".join(entity_conds) + ")")
+                
+                query_hist = f"""
+                    SELECT 
+                        t.transaction_id, t.customer_id, t.project_id, t.unit_id,
+                        t.demand_date, t.payment_date, t.demand_amount, t.collected_amount,
+                        t.outstanding_amount, t.discount_amount, t.refund_amount,
+                        t.payment_delay_days, t.payment_gap_days, t.upload_batch_id
+                    FROM transactions t
+                    WHERE {" AND ".join(conditions)}
+                    ORDER BY t.demand_date ASC, t.id ASC;
+                """
+                df_hist = pd.read_sql(query_hist, conn, params=params)
+                
+                # Suffix historical transaction IDs to prevent colliding keys in the registry
+                if not df_hist.empty:
+                    df_hist['transaction_id'] = df_hist['transaction_id'] + '_HIST_' + df_hist['upload_batch_id'].fillna('UNK')
+                
+                print(f"[Groupwise Engine] Loaded {len(df_hist)} contextual history transactions.")
+                
+                df_temp = df.copy()
+                df_temp['_is_new'] = True
+                df_hist['_is_new'] = False
+                
+                df_combined = pd.concat([df_hist, df_temp], ignore_index=True)
+                _, full_registry = detect_groupwise_anomalies(df_combined, cache=cache)
+                
+                new_txn_ids = set(df_temp['transaction_id'].unique())
+                groupwise_registry = {k: v for k, v in full_registry.items() if k in new_txn_ids}
+            else:
+                _, groupwise_registry = detect_groupwise_anomalies(df, cache=cache)
+        except Exception as e:
+            print(f"Warning: Groupwise historical context lookup failed: {e}. Falling back to batch-only.")
+            _, groupwise_registry = detect_groupwise_anomalies(df, cache=cache)
+    else:
+        _, groupwise_registry = detect_groupwise_anomalies(df, cache=cache)
 
     # ── ENGINE 4: UNSUPERVISED ISOLATION FOREST ML ENGINE ──
     df_engineered = prepare_features(df)
@@ -137,38 +213,49 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
         "payment_dayofweek"
     ]
     
-    # Defensive programming check: fail-fast if any engineered features are missing
     missing_feats = [c for c in features if c not in df_engineered.columns]
     if missing_feats:
         raise ValueError(f"Missing expected engineered machine learning features: {missing_feats}")
         
     X = df_engineered[features].fillna(0)
     
-    # Calculate Isolation Forest estimators dynamically (restored to stable max(50, ...) baseline)
-    n_est = int(min(200, max(50, len(df) // 10)))
-    model = IsolationForest(
-        n_estimators=n_est,
-        max_samples='auto',
-        contamination=contamination,
-        random_state=42
-    )
-    model.fit(X)
-    
+    # Load pre-trained Isolation Forest model if available
+    model = None
+    model_path = os.path.abspath(os.path.join(base_dir, "models", "isolation_forest.joblib"))
+    if os.path.exists(model_path):
+        try:
+            model = joblib.load(model_path)
+            print("[Anomaly Pipeline] Loaded pre-trained Isolation Forest model.")
+        except Exception as e:
+            print(f"Warning: Failed to load Isolation Forest model: {e}")
+            
+    if model is None:
+        print("[Anomaly Pipeline] Training a new Isolation Forest model on the fly...")
+        n_est = int(min(200, max(50, len(df) // 10)))
+        model = IsolationForest(
+            n_estimators=n_est,
+            max_samples='auto',
+            contamination=contamination,
+            random_state=42
+        )
+        model.fit(X)
+        
     df_engineered["if_prediction"] = model.predict(X)
     df_engineered["if_score"] = model.decision_function(X)
 
-    # Compute dynamic thresholds for Isolation Forest reason generator
+    # Compute/Load Isolation Forest thresholds for reason generator
     thresholds = {}
-    for col in ['refund_amount', 'payment_delay_days', 'discount_amount', 'payment_gap_days']:
-        mean_val = df_engineered[col].mean()
-        std_val = df_engineered[col].std()
-        std_val = std_val if std_val > 0 else 1.0
-        thresholds[col] = mean_val + 2.5 * std_val
+    if cache and "isolation_forest_thresholds" in cache:
+        thresholds = cache["isolation_forest_thresholds"]
+    else:
+        for col in ['refund_amount', 'payment_delay_days', 'discount_amount', 'payment_gap_days']:
+            mean_val = df_engineered[col].mean()
+            std_val = df_engineered[col].std()
+            std_val = std_val if std_val > 0 else 1.0
+            thresholds[col] = mean_val + 2.5 * std_val
 
     # ── CONSOLIDATE SUB-ENGINE OUTPUTS ──
     flagged_records = []
-    
-    # Create lookup map for engineered features to keep consolidation rapid (O(1))
     engineered_dict = df_engineered.drop_duplicates(subset=['transaction_id']).set_index('transaction_id').to_dict('index')
 
     total_zscore_flags = 0
@@ -193,7 +280,7 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
         if zscore_flagged:
             total_zscore_flags += 1
 
-        # 2. IQR evaluation (NaN values naturally bypass inequality checks and are not flagged)
+        # 2. IQR evaluation
         iqr_flagged = False
         for col in numeric_cols:
             val = row[col]
@@ -227,7 +314,6 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
         if if_flagged:
             total_if_flags += 1
 
-        # A transaction is flagged if ANY of the four sub-engines reports an anomaly
         if zscore_flagged or iqr_flagged or groupwise_flagged or if_flagged:
             engines = []
             if zscore_flagged: engines.append("Z-Score")
@@ -272,7 +358,6 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
             }
             flagged_records.append(record)
 
-    # 5. Save the consolidated anomaly report using a secure absolute path
     reports_dir = os.path.join(base_dir, "reports")
     os.makedirs(reports_dir, exist_ok=True)
     report_path = os.path.abspath(os.path.join(reports_dir, "anomaly_report.json"))
@@ -280,7 +365,6 @@ def run_anomaly_pipeline(csv_path="data/sample_finance_data.csv", z_threshold=3.
     with open(report_path, "w") as f:
         json.dump(flagged_records, f, indent=4)
 
-    # Print summary metrics to console
     print(f"\n=======================================================")
     print(f"     CONSOLIDATED ANOMALY RADAR AUDIT COMPLETE")
     print(f"=======================================================")

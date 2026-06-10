@@ -122,8 +122,9 @@ def main(user_id="system_default", csv_path="data/sample_finance_data.csv", batc
                 print(f"Warning: Failed to restore reviews: {e}")
 
     # Step 2: Anomaly Outlier Detection
+        # Step 2: Anomaly Outlier Detection
     print("\n[Step 2/5] Running Statistical & ML Anomaly Detection Engines...")
-    anomalies = anomaly_detector.run_anomaly_pipeline(csv_path)
+    anomalies = anomaly_detector.run_anomaly_pipeline(csv_path, conn=conn, user_id=user_id, batch_id=batch_id)
     if anomalies is None:
         print("Pipeline aborted. Anomaly detection failed.")
         return

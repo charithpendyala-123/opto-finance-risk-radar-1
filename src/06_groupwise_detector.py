@@ -14,16 +14,16 @@ load_finance_csv = csv_loader.load_finance_csv
 iqr_detector = importlib.import_module("src.05_iqr_anomalydetector")
 iqr = iqr_detector.iqr
 
-def detect_groupwise_anomalies(df):
+# Replace detect_groupwise_anomalies signature and calculations (lines 17-90) with:
+def detect_groupwise_anomalies(df, cache=None):
     """
     Highly optimized, vectorized Group-wise Contextual Outlier Engine.
-    Executes in <0.2 seconds on large datasets by pre-calculating boundaries.
+    Modified to leverage pre-computed project aggregates from stats_cache.json
+    and prevent collapsing bounds when IQR equals 0.
     """
     df_clean = df.copy()
-    # Save the original physical row number (index is 0-based, so + 2 is the CSV row number)
     df_clean['original_row_num'] = df_clean.index + 2
     
-    # ── 0. SAFELY CONVERT NUMERICS & DATES ──
     numeric_cols = ['demand_amount', 'collected_amount', 'outstanding_amount', 'discount_amount', 'refund_amount', 'payment_delay_days']
     for col in numeric_cols:
         df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce').fillna(0)
@@ -31,65 +31,135 @@ def detect_groupwise_anomalies(df):
     df_clean['demand_date_parsed'] = pd.to_datetime(df_clean['demand_date'], errors='coerce')
     df_clean['payment_date_parsed'] = pd.to_datetime(df_clean['payment_date'], errors='coerce')
 
-    # Registry to store flags dynamically
     anomaly_registry = {}
     
-    # ── 1. VECTORIZED GROUP SIZES FOR THE 5 LENSES (WITH NAMING SAFEGUARDS) ──
-    df_clean['demand_date_size'] = df_clean.groupby('demand_date')['demand_date'].transform('size').fillna(0)
-    df_clean['payment_date_size'] = df_clean.groupby('payment_date')['payment_date'].transform('size').fillna(0)
-    df_clean['project_id_size'] = df_clean.groupby('project_id')['project_id'].transform('size').fillna(0)
+    # ── 1. VECTORIZED GROUP SIZES ──
+    if cache and "projects" in cache:
+        df_clean['project_id_size'] = df_clean['project_id'].map(lambda p: cache['projects'].get(p, {}).get('size', 0)).fillna(0)
+    else:
+        df_clean['project_id_size'] = df_clean.groupby('project_id')['project_id'].transform('size').fillna(0)
+        
     df_clean['project_size'] = df_clean['project_id_size']
     df_clean['customer_id_size'] = df_clean.groupby('customer_id')['customer_id'].transform('size').fillna(0)
     df_clean['customer_size'] = df_clean['customer_id_size']
     df_clean['unit_id_size'] = df_clean.groupby('unit_id')['unit_id'].transform('size').fillna(0)
     df_clean['unit_size'] = df_clean['unit_id_size']
 
-    # ── 1b. OPTIMIZED VECTORIZED STATS FOR LOGICAL CASES ──
+    # ── 1b. OPTIMIZED VECTORIZED STATS ──
     df_clean['customer_unique_projs'] = df_clean.groupby('customer_id')['project_id'].transform('nunique').fillna(0)
     df_clean['customer_proj_unique_units'] = df_clean.groupby(['customer_id', 'project_id'])['unit_id'].transform('nunique').fillna(0)
     df_clean['customer_demand_date_count'] = df_clean.groupby(['customer_id', 'demand_date'])['demand_date'].transform('size').fillna(0)
 
-    # ── 2. PRE-CALCULATE LOCAL IQR BOUNDS (VECTORIZED) ──
-    for lens in ['project_id', 'customer_id']:
-        q1 = df_clean.groupby(lens)['demand_amount'].transform(lambda x: x.quantile(0.25))
-        q3 = df_clean.groupby(lens)['demand_amount'].transform(lambda x: x.quantile(0.75))
+    # ── 2. PRE-CALCULATE LOCAL IQR BOUNDS (WITH ZERO IQR PREVENTION) ──
+    # Project-level demand bounds
+    if cache and "projects" in cache:
+        def get_proj_demand_upper(p):
+            p_stats = cache["projects"].get(p, {})
+            if not p_stats: return 0.0
+            q1, q3 = p_stats["demand_q1"], p_stats["demand_q3"]
+            iqr_val = q3 - q1
+            if iqr_val == 0: iqr_val = 0.1 * p_stats["median_demand"]
+            return q3 + 1.5 * iqr_val
+        df_clean['project_id_demand_upper'] = df_clean['project_id'].map(get_proj_demand_upper).fillna(0)
+    else:
+        q1 = df_clean.groupby('project_id')['demand_amount'].transform(lambda x: x.quantile(0.25))
+        q3 = df_clean.groupby('project_id')['demand_amount'].transform(lambda x: x.quantile(0.75))
         iqr_val = q3 - q1
-        df_clean[f'{lens}_demand_upper'] = q3 + 1.5 * iqr_val
+        # Fallback for 0 IQR
+        med_proj = df_clean.groupby('project_id')['demand_amount'].transform('median').replace(0, 1.0)
+        iqr_val = np.where(iqr_val == 0, 0.1 * med_proj, iqr_val)
+        df_clean['project_id_demand_upper'] = q3 + 1.5 * iqr_val
 
-    for lens in ['project_id', 'customer_id']:
-        q1 = df_clean.groupby(lens)['collected_amount'].transform(lambda x: x.quantile(0.25))
-        q3 = df_clean.groupby(lens)['collected_amount'].transform(lambda x: x.quantile(0.75))
+    # Customer-level demand bounds
+    q1_c = df_clean.groupby('customer_id')['demand_amount'].transform(lambda x: x.quantile(0.25))
+    q3_c = df_clean.groupby('customer_id')['demand_amount'].transform(lambda x: x.quantile(0.75))
+    iqr_c = q3_c - q1_c
+    med_cust = df_clean.groupby('customer_id')['demand_amount'].transform('median').replace(0, 1.0)
+    iqr_c = np.where(iqr_c == 0, 0.1 * med_cust, iqr_c)
+    df_clean['customer_id_demand_upper'] = q3_c + 1.5 * iqr_c
+
+    # Project-level collected bounds
+    if cache and "projects" in cache:
+        def get_proj_collected_upper(p):
+            p_stats = cache["projects"].get(p, {})
+            if not p_stats: return 0.0
+            q1, q3 = p_stats["collected_q1"], p_stats["collected_q3"]
+            iqr_val = q3 - q1
+            if iqr_val == 0: iqr_val = 0.1 * p_stats["median_demand"]
+            return q3 + 1.5 * iqr_val
+        df_clean['project_id_collected_upper'] = df_clean['project_id'].map(get_proj_collected_upper).fillna(0)
+    else:
+        q1 = df_clean.groupby('project_id')['collected_amount'].transform(lambda x: x.quantile(0.25))
+        q3 = df_clean.groupby('project_id')['collected_amount'].transform(lambda x: x.quantile(0.75))
         iqr_val = q3 - q1
-        df_clean[f'{lens}_collected_upper'] = q3 + 1.5 * iqr_val
+        med_proj = df_clean.groupby('project_id')['collected_amount'].transform('median').replace(0, 1.0)
+        iqr_val = np.where(iqr_val == 0, 0.1 * med_proj, iqr_val)
+        df_clean['project_id_collected_upper'] = q3 + 1.5 * iqr_val
 
+    # Customer-level collected bounds
+    q1_cc = df_clean.groupby('customer_id')['collected_amount'].transform(lambda x: x.quantile(0.25))
+    q3_cc = df_clean.groupby('customer_id')['collected_amount'].transform(lambda x: x.quantile(0.75))
+    iqr_cc = q3_cc - q1_cc
+    med_cust_c = df_clean.groupby('customer_id')['collected_amount'].transform('median').replace(0, 1.0)
+    iqr_cc = np.where(iqr_cc == 0, 0.1 * med_cust_c, iqr_cc)
+    df_clean['customer_id_collected_upper'] = q3_cc + 1.5 * iqr_cc
+
+    # Project-level outstanding ratio bounds
     df_clean['outstanding_ratio'] = np.where(df_clean['demand_amount'] > 0, df_clean['outstanding_amount'] / df_clean['demand_amount'], 0)
-    q1_r = df_clean.groupby('project_id')['outstanding_ratio'].transform(lambda x: x.quantile(0.25))
-    q3_r = df_clean.groupby('project_id')['outstanding_ratio'].transform(lambda x: x.quantile(0.75))
-    iqr_r = q3_r - q1_r
-    df_clean['project_ratio_lower'] = q1_r - 1.5 * iqr_r
-    df_clean['project_ratio_upper'] = q3_r + 1.5 * iqr_r
+    if cache and "projects" in cache:
+        def get_proj_ratio_bounds(p):
+            p_stats = cache["projects"].get(p, {})
+            if not p_stats: return 0.0, 0.0
+            q1, q3 = p_stats["ratio_q1"], p_stats["ratio_q3"]
+            iqr_val = q3 - q1
+            if iqr_val == 0: iqr_val = 0.05
+            return q1 - 1.5 * iqr_val, q3 + 1.5 * iqr_val
+        bounds = df_clean['project_id'].map(get_proj_ratio_bounds)
+        df_clean['project_ratio_lower'] = [b[0] for b in bounds]
+        df_clean['project_ratio_upper'] = [b[1] for b in bounds]
+    else:
+        q1_r = df_clean.groupby('project_id')['outstanding_ratio'].transform(lambda x: x.quantile(0.25))
+        q3_r = df_clean.groupby('project_id')['outstanding_ratio'].transform(lambda x: x.quantile(0.75))
+        iqr_r = q3_r - q1_r
+        iqr_r = np.where(iqr_r == 0, 0.05, iqr_r)
+        df_clean['project_ratio_lower'] = q1_r - 1.5 * iqr_r
+        df_clean['project_ratio_upper'] = q3_r + 1.5 * iqr_r
 
     # ── 3. PRE-CALCULATE SYSTEM & VOLUME STATS ──
-    demand_counts = df_clean.groupby('demand_date')['transaction_id'].size()
-    payment_counts = df_clean.groupby('payment_date')['transaction_id'].size()
+        # ── 3. PRE-CALCULATE SYSTEM & VOLUME STATS ──
+    if '_is_new' in df_clean.columns:
+        df_hist_only = df_clean[df_clean['_is_new'] == False]
+    else:
+        df_hist_only = df_clean
+
+    hist_demand_counts = df_hist_only.groupby('demand_date')['transaction_id'].size()
+    hist_payment_counts = df_hist_only.groupby('payment_date')['transaction_id'].size()
     
-    # helper for IQR bounds
     def local_iqr(series):
         q1 = series.quantile(0.25)
         q3 = series.quantile(0.75)
-        return q3 + 1.5 * (q3 - q1)
+        iqr_val = q3 - q1
+        if iqr_val == 0: iqr_val = 1.0
+        return q3 + 1.5 * iqr_val
         
-    d_upper = local_iqr(demand_counts)
-    p_upper = local_iqr(payment_counts)
+    d_upper = local_iqr(hist_demand_counts)
+    p_upper = local_iqr(hist_payment_counts)
     
-    df_clean['demand_date_count'] = df_clean['demand_date'].map(demand_counts).fillna(0)
-    df_clean['payment_date_count'] = df_clean['payment_date'].map(payment_counts).fillna(0)
+    comb_demand_counts = df_clean.groupby('demand_date')['transaction_id'].size()
+    comb_payment_counts = df_clean.groupby('payment_date')['transaction_id'].size()
+
+    df_clean['demand_date_count'] = df_clean['demand_date'].map(comb_demand_counts).fillna(0)
+    df_clean['payment_date_count'] = df_clean['payment_date'].map(comb_payment_counts).fillna(0)
 
     df_clean['daily_proj_avg'] = df_clean.groupby(['project_id', 'demand_date'])['demand_amount'].transform('mean')
-    df_clean['proj_median_30d'] = df_clean.groupby('project_id')['demand_amount'].transform('median')
+    
+    if cache and "projects" in cache:
+        df_clean['proj_median_30d'] = df_clean['project_id'].map(lambda p: cache["projects"].get(p, {}).get("median_demand", 0.0)).fillna(0)
+    else:
+        df_clean['proj_median_30d'] = df_clean.groupby('project_id')['demand_amount'].transform('median')
 
-    # Pre-sort for sequential checks
     df_clean = df_clean.sort_values(by=['unit_id', 'customer_id', 'demand_date_parsed']).reset_index(drop=True)
+# (Keep the rest of the file loops and checks completely unchanged)
 
     records = df_clean.to_dict('records')
     current_unit_id = None

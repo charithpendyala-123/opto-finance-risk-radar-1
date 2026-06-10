@@ -12,21 +12,37 @@ csv_loader = importlib.import_module("src.02_csv_loader")
 load_finance_csv = csv_loader.load_finance_csv
 
 # Fixed to return the TRUE IQR directly!
-def iqr(series):
+def iqr(series, col_name=None, cache=None):
     # Avoid double conversion if already numeric
     numeric_series = pd.to_numeric(series, errors='coerce') if series.dtype == object else series
 
-    if numeric_series.isna().all():
-        return np.nan, np.nan, np.nan
-    
-    Q1 = numeric_series.quantile(0.25)
-    Q3 = numeric_series.quantile(0.75)
-    IQR = Q3 - Q1 # <-- True IQR calculation (Q3 - Q1)
-    
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
-    
-    return lower_bound, upper_bound, IQR # <-- Returns all three
+    if cache and col_name and col_name in cache.get('iqr', {}):
+        lower_bound = cache['iqr'][col_name]['lower_bound']
+        upper_bound = cache['iqr'][col_name]['upper_bound']
+        IQR = cache['iqr'][col_name]['iqr']
+        
+        # Zero-IQR collapsing bounds prevention
+        if IQR == 0:
+            mean_val = cache.get('zscore', {}).get(col_name, {}).get('mean', 1.0)
+            IQR = 0.1 * mean_val if mean_val > 0 else 1.0
+            lower_bound = lower_bound - 1.5 * IQR
+            upper_bound = upper_bound + 1.5 * IQR
+    else:
+        if numeric_series.isna().all():
+            return np.nan, np.nan, np.nan
+        
+        Q1 = numeric_series.quantile(0.25)
+        Q3 = numeric_series.quantile(0.75)
+        IQR = Q3 - Q1
+        
+        if IQR == 0:
+            median_val = numeric_series.median()
+            IQR = 0.1 * median_val if (pd.notna(median_val) and median_val > 0) else 1.0
+            
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        
+    return lower_bound, upper_bound, IQR
 
 # Helper to construct reasoning with safety guardrails (pd.notna)
 def get_anomaly_reason(row):
